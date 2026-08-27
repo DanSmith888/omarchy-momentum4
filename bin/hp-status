@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""hp-status — one JSON line describing the connected Bluetooth headset.
+
+    {"mac": "...", "name": "MOMENTUM 4", "battery": 90,
+     "anc_supported": true, "anc": true, "transparency": 100}
+
+Battery is generic: it comes from BlueZ's org.bluez.Battery1, so any headset
+that reports battery works. That interface only exists when
+`Experimental = true` is set in /etc/bluetooth/main.conf.
+
+Noise control is device-specific. Only devices with a backend below report
+anc_supported; everything else still gets a battery reading rather than
+vanishing from the bar.
+
+Exits 0 with an empty object when nothing is connected — the widget hides
+itself rather than showing a stale value.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+TIMEOUT = 10
+
+# name pattern -> backend script in this directory
+BACKENDS = [
+    (re.compile(r"MOMENTUM\s*4", re.I), "m4ctl"),
+]
+
+
+def run(cmd, timeout=TIMEOUT):
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return r.stdout if r.returncode == 0 else None
+    except Exception:
+        return None
+
+
+def connected_device():
+    """(mac, name) of the first connected device that looks like audio."""
+    out = run(["bluetoothctl", "devices", "Connected"], timeout=5)
+    if not out:
+        return None, None
+    for line in out.splitlines():
+        parts = line.split(maxsplit=2)
+        if len(parts) < 3:
+            continue
+        mac, name = parts[1], parts[2]
+        info = run(["bluetoothctl", "info", mac], timeout=5) or ""
+        # Audio Sink UUID, or an audio icon — avoids matching mice and keyboards.
+        if "0000110b" in info or "audio-" in info:
+            return mac, name
+    return None, None
+
+
+def battery(mac):
+    path = "/org/bluez/hci0/dev_" + mac.replace(":", "_")
+    out = run(["busctl", "--system", "get-property", "org.bluez", path,
+               "org.bluez.Battery1", "Percentage"], timeout=5)
+    if not out:
+        return None
+    try:
+        return int(out.split()[-1])
+    except (ValueError, IndexError):
+        return None
+
+
+def backend_for(name):
+    for pattern, script in BACKENDS:
+        if pattern.search(name or ""):
+            path = os.path.join(HERE, script)
+            if os.access(path, os.X_OK):
+                return path
+    return None
+
+
+def main():
+    mac, name = connected_device()
+    if not mac:
+        print("{}")
+        return
+
+    state = {"mac": mac, "name": name, "battery": battery(mac),
+             "anc_supported": False}
+
+    backend = backend_for(name)
+    if backend:
+        out = run([backend, "get", "--json"])
+        if out:
+            try:
+                d = json.loads(out)
+                # anc is None when the device rejected the query, so only
+                # claim support when a real value came back.
+                if d.get("anc") is not None:
+                    state["anc_supported"] = True
+                    state["anc"] = d["anc"]
+                    state["transparency"] = d.get("transparency")
+            except json.JSONDecodeError:
+                pass
+
+    print(json.dumps(state))
+
+
+if __name__ == "__main__":
+    main()

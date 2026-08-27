@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "headphones",
+  "name": "Headphones",
+  "version": "0.1.0",
+  "author": "Daniel Smith",
+  "description": "Bluetooth headphone battery and noise control in the Omarchy bar",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Headphones",
+    "description": "Battery from BlueZ, plus noise control for supported devices",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
