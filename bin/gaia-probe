@@ -33,6 +33,7 @@ Usage:
 
 import argparse
 import collections
+import socket
 import json
 import os
 import sys
@@ -89,26 +90,48 @@ def main():
            if args.even or (c % 2 == 1)]
 
     supported, unsupported, silent = [], [], []
+    reconnects = 0
+    reconnect_points = []
     with _m4.Momentum4(mac) as dev:
         if not args.json:
             print(f"Probing {len(ids)} command IDs on {mac} "
                   f"(channel {dev.channel})", file=sys.stderr)
         for i, cmd in enumerate(ids):
-            if not args.json and i % 64 == 0:
-                print(f"  {cmd:#06x} … ({i}/{len(ids)})", file=sys.stderr)
-            try:
-                _, _, payload, ok = dev.exchange(cmd, b"", timeout=args.timeout)
-                entry = {"command": f"{cmd:#06x}",
-                         "payload": payload.hex(),
-                         "known": KNOWN.get(cmd)}
-                (supported if ok else unsupported).append(entry)
-            except SystemExit:
-                raise
-            except Exception:
-                # No reply within the timeout: the firmware ignored it
-                # entirely, which is neither a yes nor a no.
-                silent.append({"command": f"{cmd:#06x}"})
-                dev.buf = b""
+            # Progress goes to stderr regardless of output format — with --json
+            # a long sweep would otherwise look hung for twenty minutes.
+            if i % 64 == 0:
+                print(f"  {cmd:#06x} … ({i}/{len(ids)}, {reconnects} reconnects)",
+                      file=sys.stderr, flush=True)
+
+            for attempt in (1, 2):
+                try:
+                    _, _, payload, ok = dev.exchange(cmd, b"", timeout=args.timeout)
+                    entry = {"command": f"{cmd:#06x}",
+                             "payload": payload.hex(),
+                             "known": KNOWN.get(cmd)}
+                    (supported if ok else unsupported).append(entry)
+                    break
+                except socket.timeout:
+                    # A genuine non-answer: the firmware saw it and said nothing.
+                    silent.append({"command": f"{cmd:#06x}"})
+                    dev.buf = b""
+                    break
+                except (OSError, SystemExit) as exc:
+                    # The socket died. Sweeping thousands of commands does
+                    # sometimes drop the GAIA session, and without this the run
+                    # records every remaining id as "silent" in seconds and
+                    # looks like a completed sweep. Reconnect and retry once.
+                    if attempt == 2:
+                        raise SystemExit(
+                            f"gaia-probe: lost the connection at {cmd:#06x} and "
+                            f"could not re-establish it: {exc}")
+                    reconnects += 1
+                    reconnect_points.append(f"{cmd:#06x}")
+                    print(f"  ! reconnecting at {cmd:#06x} ({exc})",
+                          file=sys.stderr, flush=True)
+                    dev.close()
+                    time.sleep(2.0)
+                    dev.__enter__()
             time.sleep(0.01)
 
     # A success reply is weaker evidence than it looks: this firmware acks most
@@ -135,6 +158,8 @@ def main():
               "silent_count": len(silent),
               "bulk_ack_payload": bulk,
               "bulk_ack_count": counts[bulk] if bulk is not None else 0,
+              "reconnects": reconnects,
+              "reconnect_points": reconnect_points,
               "distinctive": distinctive,
               "supported": supported}
 
@@ -143,7 +168,7 @@ def main():
         return
 
     print(f"\n{len(supported)} acked, {len(unsupported)} rejected, "
-          f"{len(silent)} no reply")
+          f"{len(silent)} no reply, {reconnects} reconnects")
     if bulk is not None:
         print(f"{counts[bulk]} of the acks returned an identical payload "
               f"({bulk or 'empty'}) — treat those as a blind ack, not a feature.\n")
