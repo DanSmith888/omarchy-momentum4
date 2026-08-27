@@ -1,4 +1,4 @@
-# omarchy-headphones
+# omarchy-momentum4
 
 Bluetooth headphone battery and noise control in the [Omarchy](https://omarchy.org/) status bar.
 
@@ -11,7 +11,7 @@ Bluetooth headphone battery and noise control in the [Omarchy](https://omarchy.o
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/<you>/omarchy-headphones.git --enable
+omarchy plugin add https://github.com/<you>/omarchy-momentum4.git --enable
 ```
 
 Then enable BlueZ's experimental interfaces, which is what exposes battery at all:

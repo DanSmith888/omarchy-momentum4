@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
-  "id": "headphones",
-  "name": "Headphones",
+  "id": "momentum4",
+  "name": "Momentum 4",
   "version": "0.1.0",
   "author": "Daniel Smith",
-  "description": "Bluetooth headphone battery and noise control in the Omarchy bar",
+  "description": "Sennheiser Momentum 4 battery and noise control in the Omarchy bar",
   "kinds": [
     "bar-widget"
   ],
   "entryPoints": {
-    "barWidget": "BarWidget.qml"
+    "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "Headphones",
-    "description": "Battery from BlueZ, plus noise control for supported devices",
+    "displayName": "Momentum 4",
+    "description": "Battery and noise control for the Sennheiser Momentum 4",
     "category": "Info",
     "allowMultiple": false,
     "defaultSection": "right"
