@@ -66,6 +66,45 @@ The Momentum 4 rejects GAIA's bass-boost command, replying with the error form
 reading the error payload as `true` — worth knowing if you compare against other
 implementations, which sometimes don't check the error bit.
 
+## Firmware probe
+
+`bin/gaia-probe` sweeps GAIA command IDs and reports which the firmware
+answers, mapping the real feature set independently of what the vendor app
+chooses to show.
+
+```bash
+bin/gaia-probe                              # default vendor range
+bin/gaia-probe --start 0x1A00 --end 0x1AFF
+bin/gaia-probe --json
+```
+
+It probes **odd IDs only** by default. Observed commands pair as
+`SET`(even)/`GET`(odd), so odd IDs are overwhelmingly reads — a convention, not
+a guarantee. `--even` widens it at your own risk.
+
+### Reading the output
+
+A success reply is weaker evidence than it looks. This firmware **acks most
+unknown IDs in a range with an identical one-byte payload**, so counting
+successes alone wildly over-reports. The probe groups replies by payload and
+surfaces only the outliers, which are the ones carrying real state.
+
+### Findings on Momentum 4 (firmware as of 2026-08)
+
+Sweeping `0x1000-0x10FF` and `0x1A00-0x1AFF`, 256 odd IDs:
+
+| Command | Payload | Notes |
+|---|---|---|
+| `0x1a01` | `010202000300` | **Unknown.** Six bytes, likely a noise-control capability or config structure |
+| `0x1a03` | `64` | Transparency (100) — known |
+| `0x1a05` | `01` | ANC status — known |
+| `0x1007` | `00` | Unknown |
+| `0x1081` `0x1083` `0x1085` | `05` each | Unknown cluster; consecutive odd IDs sharing a value suggests one feature group |
+
+Everything else returned the bulk ack. Note `0x1a05`'s real payload happens to
+equal the bulk ack byte, so payload-distinctiveness alone would miss it — known
+commands are labelled from a table for that reason.
+
 ## Credits
 
 Protocol constants and the RFCOMM channel-probing approach for the Momentum 4

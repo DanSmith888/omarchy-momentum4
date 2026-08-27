@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""gaia-probe — discover which GAIA commands a device's firmware supports.
+
+GAIA answers a command it understands with `command | 0x0100` and one it does
+not with `command | 0x0180`. Sweeping command IDs and recording which form
+comes back maps the firmware's real feature set, independent of what the
+vendor's phone app chooses to expose.
+
+SAFETY
+------
+This sends commands to your headphones' firmware. Two constraints keep it
+conservative, and you should understand both before widening them:
+
+  * Odd IDs only, by default. Observed commands pair as SET(even)/GET(odd) —
+    0x1008/0x1009 bass, 0x1A02/0x1A03 transparency, 0x1A04/0x1A05 ANC — so
+    odd IDs are overwhelmingly reads. This is a strong convention, not a
+    guarantee: an unknown odd ID could still do something.
+  * Empty payload. A setter given no value is far more likely to be rejected
+    than to apply a change.
+
+Nothing here can flash firmware — GAIA upgrade lives behind a separate,
+multi-step handshake this tool never initiates. The realistic worst case is
+toggling a setting you can toggle back.
+
+Pass --even to include even IDs. Don't, unless you have a reason.
+
+Usage:
+  gaia-probe                        sweep the default vendor range
+  gaia-probe --start 0x1000 --end 0x1AFF
+  gaia-probe --even                 include even IDs (riskier)
+  gaia-probe --json
+"""
+
+import argparse
+import collections
+import json
+import os
+import sys
+import time
+
+# m4ctl has no .py extension, so importlib cannot infer a loader for it.
+# Executing its source into a namespace reuses the protocol and connection
+# code without duplicating it or renaming the CLI.
+_M4_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "m4ctl")
+
+
+class _NS:
+    pass
+
+
+_m4 = _NS()
+with open(_M4_PATH) as _f:
+    _src = _f.read().replace('if __name__ == "__main__":\n    main()', "")
+exec(compile(_src, _M4_PATH, "exec"), _m4.__dict__)
+
+# Ranges where the Momentum 4's known commands live. 0x10xx carries generic
+# audio features, 0x1Axx the noise-control family.
+DEFAULT_START = 0x1000
+DEFAULT_END = 0x1AFF
+
+KNOWN = {
+    0x0007: "register notification",
+    0x1008: "set bass boost",
+    0x1009: "get bass boost",
+    0x1A02: "set transparency",
+    0x1A03: "get transparency",
+    0x1A04: "set ANC status",
+    0x1A05: "get ANC status",
+}
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="gaia-probe",
+                                 description=__doc__.split("\n")[0])
+    ap.add_argument("--mac")
+    ap.add_argument("--start", type=lambda x: int(x, 0), default=DEFAULT_START)
+    ap.add_argument("--end", type=lambda x: int(x, 0), default=DEFAULT_END)
+    ap.add_argument("--even", action="store_true",
+                    help="also probe even IDs (likely setters — riskier)")
+    ap.add_argument("--timeout", type=float, default=0.6)
+    ap.add_argument("--json", action="store_true")
+    args = ap.parse_args()
+
+    mac = args.mac or _m4.connected_mac()
+    if not mac:
+        raise SystemExit("gaia-probe: no connected Momentum 4 found (use --mac)")
+
+    ids = [c for c in range(args.start, args.end + 1)
+           if args.even or (c % 2 == 1)]
+
+    supported, unsupported, silent = [], [], []
+    with _m4.Momentum4(mac) as dev:
+        if not args.json:
+            print(f"Probing {len(ids)} command IDs on {mac} "
+                  f"(channel {dev.channel})", file=sys.stderr)
+        for i, cmd in enumerate(ids):
+            if not args.json and i % 64 == 0:
+                print(f"  {cmd:#06x} … ({i}/{len(ids)})", file=sys.stderr)
+            try:
+                _, _, payload, ok = dev.exchange(cmd, b"", timeout=args.timeout)
+                entry = {"command": f"{cmd:#06x}",
+                         "payload": payload.hex(),
+                         "known": KNOWN.get(cmd)}
+                (supported if ok else unsupported).append(entry)
+            except SystemExit:
+                raise
+            except Exception:
+                # No reply within the timeout: the firmware ignored it
+                # entirely, which is neither a yes nor a no.
+                silent.append({"command": f"{cmd:#06x}"})
+                dev.buf = b""
+            time.sleep(0.01)
+
+    # A success reply is weaker evidence than it looks: this firmware acks most
+    # unknown IDs in a range with an identical one-byte payload. Commands whose
+    # reply differs from that bulk ack are the ones carrying real state, so
+    # group by payload and surface the outliers rather than listing 60 acks.
+    # Only call something a blind ack on real evidence: it must dominate the
+    # replies and appear enough times to be a pattern. On a narrow sweep the
+    # most common payload is often just the one genuine answer, and calling
+    # that noise would hide the very thing being looked for.
+    BULK_MIN_COUNT = 6
+    BULK_MIN_SHARE = 0.5
+    counts = collections.Counter(e["payload"] for e in supported)
+    bulk = None
+    if counts:
+        candidate, n = counts.most_common(1)[0]
+        if n >= BULK_MIN_COUNT and n >= len(supported) * BULK_MIN_SHARE:
+            bulk = candidate
+    distinctive = [e for e in supported if bulk is None or e["payload"] != bulk]
+
+    result = {"mac": mac, "probed": len(ids),
+              "supported_count": len(supported),
+              "unsupported_count": len(unsupported),
+              "silent_count": len(silent),
+              "bulk_ack_payload": bulk,
+              "bulk_ack_count": counts[bulk] if bulk is not None else 0,
+              "distinctive": distinctive,
+              "supported": supported}
+
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return
+
+    print(f"\n{len(supported)} acked, {len(unsupported)} rejected, "
+          f"{len(silent)} no reply")
+    if bulk is not None:
+        print(f"{counts[bulk]} of the acks returned an identical payload "
+              f"({bulk or 'empty'}) — treat those as a blind ack, not a feature.\n")
+    else:
+        print("No payload dominated, so all acks are shown.\n")
+    if not distinctive:
+        print("No distinctive responses in this range.")
+        return
+    print("Distinctive responses (these carry real state):")
+    for e in distinctive:
+        label = f"  <- {e['known']}" if e["known"] else ""
+        print(f"  {e['command']}  payload={e['payload'] or '(empty)':16}{label}")
+
+
+if __name__ == "__main__":
+    main()
