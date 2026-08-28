@@ -197,20 +197,39 @@ selected, and showing percentages only in Custom — as the app does.
 Writing a field means reading `0x1a01`, changing one byte and writing the whole
 table back via `0x1a00`; the device does not accept partial writes.
 
-## EQ: readable, not writable
+## EQ
 
-The curve reads fine, but writing is unsolved:
+A five-band **parametric** EQ. Every command is per-band, indexed 0-4; band 5
+and above answer with error `0x83` (out of range), distinct from `0x05` (bad
+payload), which is how the band count was confirmed.
 
-| | |
-|---|---|
-| Read 5-band curve | `0x1003` + any single-byte argument |
-| Write | `0x1002` rejects every payload shape tried — bare curve, argument+curve, band/value pairs — always `0x1182` with payload `05` |
-| Switch preset | command not located |
+| Command | Payload | Meaning |
+|---|---|---|
+| `0x1001` | `<band><gain>` | **Set** a band's gain |
+| `0x1002` | `<band>` | Get a band's gain |
+| `0x1003` | any byte | Get all five gains at once |
+| `0x100b` | `<band>` | Frequency — 90, 325, 1500, 6500, 6500 Hz |
+| `0x100d` | `<band>` | Q factor (fixed point: 2048, then 2908) |
+| `0x100f` | `<band>` | Filter type (14 on every band) |
+| `0x1011` | `<band>` | Unknown, reads zero |
+| `0x1013` | — | Unknown, reads `0000` |
 
-`gaia-listen` cannot help here. It reports what the headphones push *to us*, so
-it reveals the resulting state but never the command the phone sent to cause it.
-Cracking the write path needs either a better guess at the payload shape or a
-capture of the phone's own link.
+`0x100f` and `0x1013` are the two commands that appeared with firmware 3.x —
+that update added the parametric EQ.
+
+### Presets live in the app, not the headphones
+
+The Sennheiser app ships eight read-only presets (Neutral, Rock, Pop, Dance,
+Hip-Hop, Classical, Movie, Jazz); editing one forces a copy. Custom presets
+appear to be stored app-side too.
+
+**The headphones hold only the active curve.** There is no preset-switch
+command and no preset list to read — switching a preset in the app simply
+writes the bands one at a time, which is exactly what `gaia-listen` shows as a
+run of `0x1082` notifications with one byte changing per packet.
+
+Any preset feature on Linux therefore means storing the curves ourselves and
+pushing them band by band, the same way the app does.
 
 ## Still to decode
 
