@@ -445,6 +445,7 @@ Panel {
             bordered: true
             selected: root.soundMode === "eq"
             foreground: root.barForeground
+            tooltipText: "Five-band equaliser with presets"
             onClicked: root.setSoundMode("eq")
           }
           Button {
@@ -452,6 +453,7 @@ Panel {
             bordered: true
             selected: root.soundMode === "speech"
             foreground: root.barForeground
+            tooltipText: "Tunes for voice. Replaces the equaliser and bass boost, which are disabled while it is on."
             onClicked: root.setSoundMode("speech")
           }
         }
