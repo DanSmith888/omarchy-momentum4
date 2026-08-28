@@ -126,6 +126,29 @@ space — `m4ctl` needed no changes to keep working.
 2.13.42 at default spacing dropped the GAIA session on 3.38.3 and left the
 headphones needing a re-pair. Use `--delay 0.08` or higher.
 
+## Decoding features
+
+`bin/gaia-diff` compares two `gaia-probe` captures; `bin/gaia-watch` polls
+specific commands and prints changes live. The loop:
+
+1. `gaia-probe … --json > before.json`
+2. Change **one** setting in the Sennheiser app
+3. `gaia-probe … --json > after.json`
+4. `gaia-diff before.json after.json` — whatever moved is that feature
+5. Once located, `gaia-watch <cmd> --bytes` decodes individual fields in seconds
+
+### Decoded so far
+
+| Command | Field | Meaning |
+|---|---|---|
+| `0x1201` | 3× uint16 BE | Firmware version (`2,13,42` then `3,38,3`) |
+| `0x1a01` | byte[1] | **Anti-Wind** — observed `2 → 1`, so a mode within ANC, not a boolean |
+| `0x1a03` | byte[0] | Noise control, 0 = full ANC … 100 = full transparency |
+| `0x1a05` | byte[0] | ANC on/off |
+| `0x1009` | byte[0] | Bass boost (rejected on firmware 2.x, works on 3.x) |
+
+`0x1a01`'s other five bytes are still unknown and are the obvious next target.
+
 ## Credits
 
 Protocol constants and the RFCOMM channel-probing approach for the Momentum 4
