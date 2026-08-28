@@ -458,6 +458,14 @@ Panel {
           }
         }
 
+        // Separates the mode choice from the controls that mode governs.
+        PanelSeparator {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          foreground: root.barForeground
+          visible: root.soundMode !== ""
+        }
+
         // Presets are ours, not the device's — applying one writes all bands.
         // "Custom" lights when the curve matches no preset, which is what
         // happens as soon as a band is changed by hand.
