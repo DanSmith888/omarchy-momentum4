@@ -126,6 +126,31 @@ space — `m4ctl` needed no changes to keep working.
 2.13.42 at default spacing dropped the GAIA session on 3.38.3 and left the
 headphones needing a re-pair. Use `--delay 0.08` or higher.
 
+## Noise control model
+
+The app presents one three-way control, but on the wire it is two things:
+
+| App mode | `0x1a05` (ANC) | `0x1a01` id 3 |
+|---|---|---|
+| Adaptive | on | 1 |
+| Custom | on | 0 |
+| Off | off | — |
+
+Only **Custom** exposes the slider and Anti-wind; Adaptive drives them itself
+and Off bypasses them. The panel mirrors that, dimming both unless Custom is
+selected, and showing percentages only in Custom — as the app does.
+
+Writing a field means reading `0x1a01`, changing one byte and writing the whole
+table back via `0x1a00`; the device does not accept partial writes.
+
+## Still to decode
+
+From the app's Noise control sub-page:
+
+- **Anti-wind settings**: Auto / Max — a likely candidate for `0x1a01` id 2 (byte[3]), which has only ever read `0`
+- **Phone calls**: toggle plus a Low/High level slider
+- **Auto-pause**: pause audio when Transparency is enabled
+
 ## Decoding features
 
 `bin/gaia-diff` compares two `gaia-probe` captures; `bin/gaia-watch` polls
@@ -147,7 +172,8 @@ specific commands and prints changes live. The loop:
 | `0x1a01` | byte[3] (id 2) | Unknown, observed only as `0` |
 | `0x1a01` | byte[5] (id 3) | **Adaptive ANC** — `1` adaptive, `0` custom |
 | `0x1a03` | byte[0] | Noise control, 0 = full ANC … 100 = full transparency |
-| `0x1a05` | byte[0] | ANC on/off |
+| `0x1a05` | byte[0] | ANC on/off — the "Off" leg of the app's three-way mode |
+| `0x1a00` | whole table | **Writes** the `0x1a01` table; field changes are read-modify-write |
 | `0x1009` | byte[0] | Bass boost (rejected on firmware 2.x, works on 3.x) |
 | `0x1607` / `0x1606` | byte[0] | **Headphone Controls** (on-cup touch/buttons). **Inverted**: `0` = enabled, `1` = disabled |
 
