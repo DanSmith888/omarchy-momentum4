@@ -142,6 +142,7 @@ def doctor():
         pass
     add(experimental, "BlueZ Experimental enabled",
         "" if experimental else "org.bluez.Battery1 needs this",
+        "one-time manual step, run it yourself (the plugin never runs sudo): "
         "sudo sed -i 's/^#Experimental = false/Experimental = true/' "
         "/etc/bluetooth/main.conf && sudo systemctl restart bluetooth")
 
@@ -235,8 +236,12 @@ COMMON_CHANNELS = [2, 1, 15, 14, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 # the loser can take the whole session down with it. Everything that opens
 # an RFCOMM socket goes through Momentum4, so serialising here covers m4ctl,
 # m4status and gaia-probe at once.
-LOCK_PATH = os.path.join(
-    os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "m4ctl.lock")
+# The lock lives in the owner-only runtime dir, never a shared /tmp: a
+# predictable path there could be pre-created by another user.
+_RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR")
+if not _RUNTIME_DIR:
+    sys.exit("m4ctl: XDG_RUNTIME_DIR is not set; refusing to use a shared temp dir")
+LOCK_PATH = os.path.join(_RUNTIME_DIR, "m4ctl.lock")
 LOCK_TIMEOUT = 30.0
 
 

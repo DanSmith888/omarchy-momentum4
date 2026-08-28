@@ -4,22 +4,36 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Sennheiser Momentum 4: battery pill in the bar, noise control in a popup.
+// Sennheiser Momentum 4: the control panel, and the owner of all device state.
 //
-// Extends Ui/Panel, which is the same base the first-party audio and network
-// widgets use — it provides the open/close/toggle contract, IPC target and
-// keyboard handling, so the widget and its popup are one component.
+// Loaded by BarWidget.qml (the manifest entry point), which injects bar,
+// anchorItem and hostWidget and forwards open/close/toggle to us. Extends
+// Ui/Panel for the open/close controller and keyboard handling; IPC is left
+// to the bar widget so the target is registered once.
 //
-// Battery comes from BlueZ org.bluez.Battery1 (generic to any headset that
-// reports it, and requires `Experimental = true` in /etc/bluetooth/main.conf).
-// Noise control speaks GAIA over RFCOMM via bin/m4ctl.
+// Battery comes from BlueZ org.bluez.Battery1, which requires
+// `Experimental = true` in /etc/bluetooth/main.conf. Everything else speaks
+// GAIA over RFCOMM via bin/m4ctl.
 //
-// State is polled rather than subscribed: reading noise control means opening
+// State is polled rather than subscribed: reading the device means opening
 // an RFCOMM socket, and holding that open would lock out other clients.
 Panel {
   id: root
-  moduleName: "momentum4"
-  ipcTarget: "momentum4"
+  moduleName: "dansmith888.momentum4"
+  manageIpc: false
+
+  // Injected by BarWidget.qml. The bar tracks the widget mounted in its slot,
+  // not this nested panel, so everything the bar identifies a panel by has to
+  // be that widget.
+  property var anchorItem: null
+  property var hostWidget: null
+  readonly property var barIdentity: hostWidget || root
+
+  function switchPanel(direction) {
+    if (root.bar && typeof root.bar.switchPanelFrom === "function")
+      return root.bar.switchPanelFrom(root.barIdentity, direction)
+    return false
+  }
 
   property int percentage: -1
   property string deviceName: ""
@@ -200,49 +214,10 @@ Panel {
     onTriggered: if (!root.busy) root.refresh()
   }
 
-  visible: root.devicePresent
-  implicitWidth: button.implicitWidth
-  implicitHeight: button.implicitHeight
-
-  // WidgetButton, not BarIconButton: the latter is glyph-only and pins its
-  // width to one icon slot, so "90%" would overflow into the next widget.
-  WidgetButton {
-    id: button
-    anchors.fill: parent
-    bar: root.bar
-    // Battery vanishes from Bluetooth while the cable is attached, so show a
-    // charging glyph rather than an empty pill the user cannot interpret.
-    text: root.present ? "󰋋  " + root.percentage + "%"
-        : root.charging ? "󰋋  󰂄"
-        : "󰋋"
-    hasVisualContent: text !== ""
-    horizontalMargin: 8.75
-    verticalPadding: 8.75
-    active: root.low
-    tooltipText: {
-      if (root.deviceName === "") return "Headphones"
-      var t = root.deviceName
-      if (root.present) t += " — " + root.percentage + "%"
-      if (root.charging) t += root.present ? " (charging)" : " — charging"
-      else if (!root.present) t += " — battery unknown"
-      return t
-    }
-
-    onPressed: function(b) {
-      if (b === Qt.MiddleButton) root.refresh()
-      else root.toggle()
-    }
-
-    onWheelMoved: function(delta) {
-      if (!root.ancSupported || root.uiLevel < 0) return
-      root.setUiLevel(root.uiLevel + (delta > 0 ? 10 : -10))
-    }
-  }
-
   KeyboardPanel {
     id: panel
-    anchorItem: button
-    owner: root
+    anchorItem: root.anchorItem
+    owner: root.barIdentity
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher

@@ -1,13 +1,75 @@
-# omarchy-momentum4
+# Momentum4
 
-Control your **Sennheiser Momentum 4** headphones from the [Omarchy](https://omarchy.org/) status bar — battery, noise control, EQ and more, without reaching for your phone.
+Control your **Sennheiser Momentum 4** headphones from the [Omarchy](https://omarchy.org/) bar — battery, noise control, EQ and touch controls, without reaching for your phone.
 
 ![Battery in the bar](docs/bar.png)
 
-This is built for one set of headphones. It speaks the Momentum 4's own
-protocol, so it will not work with anything else.
-
 ![The panel](docs/panel.png)
+
+This is built for one set of headphones. It speaks the Momentum 4's own
+protocol, so it will not work with anything else. It is self-contained —
+plain Python from the standard library, no extra packages or binaries.
+
+## Install
+
+### 1. Enable BlueZ experimental interfaces (one-time, manual)
+
+Battery comes from `org.bluez.Battery1`, which BlueZ only exposes when this is
+on. **Without it the widget has nothing to show and stays hidden.**
+
+This is the one step that needs root, and it is yours to run — **the plugin
+never runs `sudo`** and never touches `/etc` itself:
+
+```bash
+sudo sed -i 's/^#Experimental = false/Experimental = true/' /etc/bluetooth/main.conf
+sudo systemctl restart bluetooth
+```
+
+### 2. Add the plugin
+
+```bash
+omarchy plugin add https://github.com/DanSmith888/omarchy-momentum4.git --enable
+```
+
+### 3. Check it
+
+```bash
+~/.config/omarchy/plugins/dansmith888.momentum4/bin/m4ctl doctor
+```
+
+Verifies every link from the headphones to the bar and tells you how to fix
+whatever is broken. Put `bin/` on your `PATH` if you want `m4ctl` as a command.
+
+## Update
+
+```bash
+omarchy plugin update dansmith888.momentum4
+```
+
+## Remove
+
+```bash
+omarchy plugin remove dansmith888.momentum4
+```
+
+That removes everything the plugin installed. The BlueZ `Experimental` flag
+from step 1 is left as you set it; to undo it:
+
+```bash
+sudo sed -i 's/^Experimental = true/#Experimental = false/' /etc/bluetooth/main.conf
+sudo systemctl restart bluetooth
+```
+
+## Using it
+
+**Left-click** the battery pill to open the panel. **Scroll** on it to adjust
+noise level without opening anything. **Middle-click** to force a refresh.
+
+To open the panel from a hotkey, bind:
+
+```bash
+omarchy-shell shell toggle dansmith888.momentum4
+```
 
 ## What it does
 
@@ -29,39 +91,8 @@ real state — change something in Smart Control and it follows.
 
 - Omarchy with `omarchy-shell`
 - A Sennheiser Momentum 4, paired over Bluetooth
-- Python 3 (standard library only — no dependencies)
-
-## Install
-
-### 1. Enable BlueZ experimental interfaces
-
-Battery comes from `org.bluez.Battery1`, which only exists when this is on.
-**Without it the widget has nothing to show and stays hidden.**
-
-```bash
-sudo sed -i 's/^#Experimental = false/Experimental = true/' /etc/bluetooth/main.conf
-sudo systemctl restart bluetooth
-```
-
-### 2. Add the plugin
-
-```bash
-omarchy plugin add https://github.com/USER/omarchy-momentum4.git --enable
-```
-
-### 3. Check it
-
-```bash
-m4ctl doctor
-```
-
-Verifies every link from the headphones to the bar and tells you how to fix
-whatever is broken.
-
-## Using it
-
-**Left-click** the battery pill to open the panel. **Scroll** on it to adjust
-noise level without opening anything. **Middle-click** to force a refresh.
+- Python 3 (standard library only)
+- BlueZ with `Experimental = true` (step 1 above)
 
 ## Command line
 
@@ -122,6 +153,26 @@ if you prefer your own sound and don't mind the mismatch.
 to match it; the hardware's real centre frequencies are
 90/325/1500/6500/6500 Hz.
 
+## What runs, and as whom
+
+Plugins run unsandboxed inside the Omarchy shell with your user's permissions,
+so here is exactly what this one does:
+
+- `bin/m4status` and `bin/m4ctl` are run by the widget as your user. They talk
+  to BlueZ over D-Bus (`busctl`, `bluetoothctl`) and to the headphones over an
+  RFCOMM socket. Nothing else.
+- No network access, no downloads, no background services, no writes outside
+  `$XDG_RUNTIME_DIR` (a lock file).
+- `tools/` is the reverse-engineering kit used to write [PROTOCOL.md](PROTOCOL.md).
+  The widget never runs it. `tools/gaia-probe` sends arbitrary commands to the
+  headphones — read its `--help` before pointing it at them.
+
+## Related
+
+[momentumctl](https://github.com/timmo001/omarchy-momentumctl) is another
+Omarchy panel for Sennheiser headsets, built on the external
+[`momentumctl`](https://github.com/gjabell/momentumctl) CLI.
+
 ## Protocol
 
 The Momentum 4's GAIA command set is documented in [PROTOCOL.md](PROTOCOL.md) —
@@ -137,4 +188,4 @@ licensed.
 
 ## Licence
 
-MIT
+MIT — see [LICENSE](LICENSE).

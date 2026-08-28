@@ -24,7 +24,7 @@ import os
 import sys
 import time
 
-M4 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "m4ctl")
+M4 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin", "m4ctl")
 # __file__ must be present: m4ctl resolves presets.json relative to it at
 # import time, and exec() does not provide one.
 _ns = {"__file__": M4}

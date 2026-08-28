@@ -118,11 +118,11 @@ needed a power cycle. Probably a reset or disconnect in GAIA's core space.
 |---|---|
 | `bin/m4ctl` | The CLI, and the protocol implementation everything else reuses |
 | `bin/m4status` | One JSON line for the bar widget |
-| `bin/gaia-probe` | Sweep a command range and report what answers |
-| `bin/gaia-diff` | Compare two probe captures |
-| `bin/gaia-watch` | Poll specific commands, reporting which byte changed |
-| `bin/gaia-listen` | Register for notifications and print what the device pushes |
-| `bin/eq-capture` | Record each EQ curve as presets are cycled in Smart Control |
+| `tools/gaia-probe` | Sweep a command range and report what answers |
+| `tools/gaia-diff` | Compare two probe captures |
+| `tools/gaia-watch` | Poll specific commands, reporting which byte changed |
+| `tools/gaia-listen` | Register for notifications and print what the device pushes |
+| `tools/eq-capture` | Record each EQ curve as presets are cycled in Smart Control |
 
 Captures live in `probes/`, including both sides of the 2.13.42 → 3.38.3
 firmware update.

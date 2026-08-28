@@ -1,20 +1,21 @@
 {
   "schemaVersion": 1,
-  "id": "momentum4",
-  "name": "Momentum 4",
-  "version": "0.1.0",
+  "id": "dansmith888.momentum4",
+  "name": "Momentum4",
+  "version": "1.0.0",
   "author": "Daniel Smith",
-  "description": "Sennheiser Momentum 4 battery and noise control in the Omarchy bar",
+  "license": "MIT",
+  "description": "Sennheiser Momentum 4 battery, noise control, EQ and touch controls in the Omarchy bar",
   "kinds": [
     "bar-widget"
   ],
   "entryPoints": {
-    "barWidget": "Panel.qml"
+    "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Momentum 4",
-    "description": "Battery and noise control for the Sennheiser Momentum 4",
-    "category": "Info",
+    "displayName": "Momentum4",
+    "description": "Battery, noise control, EQ and touch controls for the Sennheiser Momentum 4",
+    "category": "Audio",
     "allowMultiple": false,
     "defaultSection": "right"
   }

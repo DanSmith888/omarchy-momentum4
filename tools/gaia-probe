@@ -42,7 +42,7 @@ import time
 # m4ctl has no .py extension, so importlib cannot infer a loader for it.
 # Executing its source into a namespace reuses the protocol and connection
 # code without duplicating it or renaming the CLI.
-_M4_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "m4ctl")
+_M4_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin", "m4ctl")
 
 
 class _NS:
