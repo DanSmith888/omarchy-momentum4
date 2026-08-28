@@ -166,26 +166,26 @@ def doctor():
                 "power-cycle the headphones, then reconnect")
 
     # 5. plugin
-    plug = os.path.expanduser("~/.config/omarchy/plugins/momentum4")
+    plug = os.path.expanduser("~/.config/omarchy/plugins/" + PLUGIN_ID)
     add(os.path.isdir(plug), "Plugin installed", plug,
-        "omarchy plugin add <repo-url> --enable")
-    missing = [f for f in ("Panel.qml", "manifest.json", "presets.json",
-                           "bin/m4status", "bin/m4ctl")
+        "omarchy plugin add " + REPO_URL + " --enable")
+    missing = [f for f in ("BarWidget.qml", "Panel.qml", "manifest.json",
+                           "presets.json", "bin/m4status", "bin/m4ctl")
                if not os.path.exists(os.path.join(plug, f))]
     add(not missing, "Plugin files present",
         "missing: " + ", ".join(missing) if missing else "",
-        "omarchy plugin update momentum4")
+        "omarchy plugin update " + PLUGIN_ID)
 
     # 6. bar layout
     try:
         with open(os.path.expanduser("~/.config/omarchy/shell.json")) as f:
             layout = json.load(f).get("bar", {}).get("layout", {})
-        placed = any("momentum4" == w.get("id")
+        placed = any(PLUGIN_ID == w.get("id")
                      for sec in layout.values() for w in sec)
     except (OSError, ValueError, AttributeError):
         placed = False
     add(placed, "Widget placed in the bar", "",
-        "omarchy plugin enable momentum4")
+        "omarchy plugin enable " + PLUGIN_ID + " --section right")
 
     width = max(len(c[1]) for c in checks)
     failed = 0
@@ -236,6 +236,10 @@ COMMON_CHANNELS = [2, 1, 15, 14, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 # the loser can take the whole session down with it. Everything that opens
 # an RFCOMM socket goes through Momentum4, so serialising here covers m4ctl,
 # m4status and gaia-probe at once.
+# Identity the doctor checks the install against. Must match manifest.json.
+PLUGIN_ID = "dansmith888.momentum4"
+REPO_URL = "https://github.com/DanSmith888/omarchy-momentum4.git"
+
 # The lock lives in the owner-only runtime dir, never a shared /tmp: a
 # predictable path there could be pre-created by another user.
 _RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR")
