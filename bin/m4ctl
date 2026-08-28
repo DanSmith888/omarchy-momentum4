@@ -75,6 +75,30 @@ CMD_SET_EQ_BAND = 0x1001
 CMD_GET_EQ_BAND = 0x1002
 CMD_GET_EQ = 0x1003
 CMD_GET_EQ_FREQ = 0x100B
+
+# The app labels its five bands 63Hz/250Hz/1kHz/4kHz/8kHz. The device reports
+# its real parametric centres as 90/325/1500/6500/6500 Hz — note two bands
+# share 6500 — so the app's labels are nominal. We show the app's, because
+# that is what the user recognises.
+EQ_LABELS = ["63Hz", "250Hz", "1kHz", "4kHz", "8kHz"]
+
+# The device stores gain as dB x 10. Confirmed against the app's Rock preset,
+# which reads 0/20/25/15/-20 on the wire and 0/2.0/2.5/1.5/-2.0 dB in the UI.
+EQ_SCALE = 10.0
+
+# Presets live beside this script rather than in it, so values can be
+# corrected without editing code. The headphones have no preset storage of
+# their own — applying one just writes the five bands.
+PRESETS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            os.pardir, "presets.json")
+
+
+def load_presets():
+    try:
+        with open(PRESETS_PATH) as f:
+            return json.load(f).get("presets", [])
+    except (OSError, ValueError):
+        return []
 EQ_BANDS = 5
 
 CMD_SET_CONTROLS = 0x1606
@@ -277,7 +301,7 @@ class Momentum4:
         _, _, p, ok = self.exchange(CMD_GET_EQ, bytes([0]))
         if not ok or len(p) < EQ_BANDS:
             return None
-        return [v - 256 if v > 127 else v for v in p[:EQ_BANDS]]
+        return [(v - 256 if v > 127 else v) / EQ_SCALE for v in p[:EQ_BANDS]]
 
     def eq_frequencies(self):
         """Centre frequency of each band in Hz, or None."""
@@ -289,10 +313,19 @@ class Momentum4:
             out.append(int.from_bytes(p[1:3], "big"))
         return out
 
-    def set_eq_band(self, band, gain):
+    def set_eq_curve(self, values):
+        """Write all bands. The device has no whole-curve setter, so this
+        writes each band in turn — the same thing the phone app does when you
+        pick a preset, which is why its notifications arrive one byte at a
+        time."""
+        for band, gain in enumerate(values[:EQ_BANDS]):
+            self.set_eq_band(band, gain)
+
+    def set_eq_band(self, band, gain_db):
+        """gain_db is in dB; the device wants dB x 10."""
         if not 0 <= band < EQ_BANDS:
             raise SystemExit(f"m4ctl: band must be 0-{EQ_BANDS - 1}")
-        gain = max(-128, min(127, int(gain)))
+        gain = max(-128, min(127, int(round(float(gain_db) * EQ_SCALE))))
         _, _, _, ok = self.exchange(CMD_SET_EQ_BAND,
                                     bytes([band, gain & 0xFF]))
         if not ok:
@@ -394,9 +427,15 @@ def main():
     sub.add_parser("get", parents=[common])
     sub.add_parser("battery", parents=[common])
     sub.add_parser("eq", parents=[common])
+    sub.add_parser("presets", parents=[common])
+    p = sub.add_parser("preset", parents=[common])
+    p.add_argument("name")
     p = sub.add_parser("eq-set", parents=[common])
     p.add_argument("band", type=int, help=f"0-{EQ_BANDS - 1}")
-    p.add_argument("gain", type=int, help="signed, roughly -25..+25")
+    p.add_argument("gain", type=float, help="dB, e.g. 2.5 or -2")
+    p = sub.add_parser("eq-curve", parents=[common])
+    p.add_argument("gains", type=float, nargs=EQ_BANDS,
+                   help=f"{EQ_BANDS} gains in dB, one per band")
     p = sub.add_parser("anc", parents=[common])
     p.add_argument("value", choices=["on", "off"])
     p = sub.add_parser("bass", parents=[common])
@@ -416,6 +455,33 @@ def main():
     if not mac:
         raise SystemExit("m4ctl: no connected Momentum 4 found (use --mac)")
 
+    if args.cmd == "presets":
+        ps = load_presets()
+        if as_json:
+            print(json.dumps(ps))
+        else:
+            for e in ps:
+                mark = "" if e.get("verified") else "   (unverified)"
+                print(f"  {e['name']:10} "
+                      + " ".join(f"{g:+.1f}".rjust(6) for g in e["gains"]) + mark)
+        return
+
+    if args.cmd == "preset":
+        ps = load_presets()
+        match = next((e for e in ps
+                      if e["name"].lower() == args.name.lower()), None)
+        if not match:
+            raise SystemExit("m4ctl: no such preset: " + args.name
+                             + " (try: m4ctl presets)")
+        with Momentum4(mac) as dev:
+            dev.set_eq_curve(match["gains"])
+        return
+
+    if args.cmd == "eq-curve":
+        with Momentum4(mac) as dev:
+            dev.set_eq_curve(args.gains)
+        return
+
     if args.cmd == "eq-set":
         with Momentum4(mac) as dev:
             dev.set_eq_band(args.band, args.gain)
@@ -431,9 +497,8 @@ def main():
         if as_json:
             print(json.dumps({"eq": curve, "frequencies": freqs}))
         else:
-            if freqs:
-                print(" ".join(f"{f}Hz".rjust(7) for f in freqs))
-            print(" ".join(f"{v:+d}".rjust(7) for v in curve))
+            print(" ".join(l.rjust(7) for l in EQ_LABELS))
+            print(" ".join(f"{v:+.1f}".rjust(7) for v in curve))
         return
 
     if args.cmd == "battery":
@@ -462,7 +527,7 @@ def main():
                 print(f"Controls:     {'unsupported' if ct is None else ('on' if ct else 'off')}")
                 eq = st.get("eq")
                 if eq:
-                    print(f"EQ:           {' '.join(f'{v:+d}' for v in eq)}")
+                    print(f"EQ:           {' '.join(f'{v:+.1f}' for v in eq)} dB")
                 if st.get("firmware"):
                     print(f"Firmware:     {st['firmware']}")
         elif args.cmd == "anc":

@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "EQ presets, gains in dB per band at 63Hz / 250Hz / 1kHz / 4kHz / 8kHz.",
+    "The headphones store only the active curve — the Sennheiser app holds the",
+    "preset definitions and pushes them band by band. These were captured off",
+    "the wire by watching what the app wrote, so they are the real values, not",
+    "estimates. Edit freely; m4ctl reads this file at run time.",
+    "verified: seen settle on the wire and confirmed by name.",
+    "unverified: captured in sequence but the name is inferred from click order."
+  ],
+  "bands": ["63Hz", "250Hz", "1kHz", "4kHz", "8kHz"],
+  "presets": [
+    { "name": "Neutral", "gains": [0, 0, 0, 0, 0], "verified": true },
+    { "name": "Rock",    "gains": [-2.0, -1.5, 0, 3.5, 4.0], "verified": false },
+    { "name": "Pop",     "gains": [0, 2.0, 2.5, 1.5, -2.0], "verified": true }
+  ]
+}

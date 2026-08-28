@@ -30,7 +30,8 @@ Panel {
   property int transparency: -1
   property var bassBoost: null        // null = unsupported on this firmware
   property var controls: null         // on-cup touch/button controls
-  property var eq: null               // 5 signed band values, read-only
+  property var eq: null               // 5 gains in dB
+  property var presets: []            // from presets.json via m4ctl
   property bool usbConnected: false   // attached to THIS PC over USB
   property bool devicePresent: false  // any supported headset connected
   property bool busy: false
@@ -80,6 +81,24 @@ Panel {
   function setMode(m) { if (root.mode !== m) apply(["mode", m]) }
   function setAntiwind(v) { if (root.antiwind !== "") apply(["antiwind", v]) }
 
+  // The device has no preset storage: applying one writes all five bands,
+  // which is exactly what the phone app does.
+  function applyPreset(name) { apply(["preset", name]) }
+
+  // Which preset, if any, the current curve matches. Compared in tenths of a
+  // dB to avoid floating-point noise from the round trip.
+  function activePreset() {
+    if (!root.eq) return ""
+    for (var i = 0; i < root.presets.length; i++) {
+      var g = root.presets[i].gains, ok = true
+      if (!g || g.length !== root.eq.length) continue
+      for (var b = 0; b < g.length; b++)
+        if (Math.round(g[b] * 10) !== Math.round(root.eq[b] * 10)) { ok = false; break }
+      if (ok) return root.presets[i].name
+    }
+    return ""
+  }
+
   function setControls(on) {
     if (root.controls === null) return
     apply(["controls", on ? "on" : "off"])
@@ -110,6 +129,19 @@ Panel {
           root.percentage = -1
           root.devicePresent = false
         }
+      }
+    }
+  }
+
+  // Preset definitions are static, so load them once rather than every poll.
+  Process {
+    id: presetProc
+    command: [root.pluginDir + "bin/m4ctl", "presets", "--json"]
+    running: true
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try { root.presets = JSON.parse(String(this.text).trim()) || [] }
+        catch (e) { root.presets = [] }
       }
     }
   }
@@ -375,10 +407,27 @@ Panel {
           visible: root.eq !== null || root.bassBoost !== null
         }
 
-        // Read-only. The curve reads fine over 0x1003 but the device rejects
-        // every write shape tried against 0x1002, so there is nothing honest
-        // to offer as a control yet — showing a curve the user cannot change
-        // beats a slider that silently does nothing.
+        // Presets are ours, not the device's — see applyPreset().
+        Flow {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          spacing: Style.spacing.sm
+          visible: root.presets.length > 0 && root.eq !== null
+
+          Repeater {
+            model: root.presets
+            Button {
+              text: modelData.name
+              bordered: true
+              selected: root.activePreset() === modelData.name
+              foreground: root.barForeground
+              onClicked: root.applyPreset(modelData.name)
+            }
+          }
+        }
+
+        // The curve reads over 0x1003 and writes per band over 0x1001; the
+        // display below is a read-out of whatever is currently loaded.
         Item {
           anchors.left: parent.left
           anchors.right: parent.right
@@ -405,8 +454,9 @@ Panel {
                 width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
                 height: parent.height
 
-                readonly property int v: root.eq[index]
-                readonly property real frac: Math.max(-1, Math.min(1, v / 25))
+                readonly property real v: root.eq[index]
+                // Presets observed so far sit within about +/-6 dB.
+                readonly property real frac: Math.max(-1, Math.min(1, v / 6))
 
                 Rectangle {
                   width: parent.width
@@ -441,7 +491,9 @@ Panel {
               Text {
                 width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
                 horizontalAlignment: Text.AlignHCenter
-                text: (root.eq[index] > 0 ? "+" : "") + root.eq[index]
+                // Band labels are the app's nominal 63/250/1k/4k/8k; the
+                // device's real centres are 90/325/1500/6500/6500 Hz.
+                text: (root.eq[index] > 0 ? "+" : "") + root.eq[index].toFixed(1)
                 color: Qt.darker(root.barForeground, 1.4)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
