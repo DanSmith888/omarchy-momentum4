@@ -79,6 +79,11 @@ def main():
     ap.add_argument("--end", type=lambda x: int(x, 0), default=DEFAULT_END)
     ap.add_argument("--even", action="store_true",
                     help="also probe even IDs (likely setters — riskier)")
+    ap.add_argument("--with-response-ids", action="store_true",
+                    help="also probe ids that are the response form of a lower "
+                         "id in range (id & 0x0100). GAIA answers command|0x0100, "
+                         "so these duplicate every finding and double the runtime; "
+                         "excluded by default")
     ap.add_argument("--timeout", type=float, default=0.6)
     ap.add_argument("--delay", type=float, default=0.01,
                     help="seconds between commands; raise it if the device "
@@ -93,6 +98,10 @@ def main():
 
     ids = [c for c in range(args.start, args.end + 1)
            if args.even or (c % 2 == 1)]
+    if not args.with_response_ids:
+        in_range = set(ids)
+        ids = [c for c in ids
+               if not (c & 0x0100 and (c - 0x0100) in in_range)]
 
     supported, unsupported, silent = [], [], []
     reconnects = 0
