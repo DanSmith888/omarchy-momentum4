@@ -121,10 +121,14 @@ Panel {
   }
 
   // Poll faster while the popup is open so the readout tracks the device.
+  // triggeredOnStart matters: without it the panel shows up to a minute of
+  // stale state for the first five seconds after opening, which reads as a
+  // bug when the setting was just changed in the phone app.
   Timer {
     interval: 5000
     running: root.opened
     repeat: true
+    triggeredOnStart: true
     onTriggered: if (!root.busy) root.refresh()
   }
 
