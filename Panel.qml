@@ -366,63 +366,24 @@ Panel {
           anchors.left: parent.left
           anchors.right: parent.right
           foreground: root.barForeground
-          visible: root.bassBoost !== null
+          visible: root.eq !== null || root.bassBoost !== null
         }
 
         PanelSectionHeader {
-          text: "BASS BOOST"
+          text: "SOUND"
           foreground: root.barForeground
-          visible: root.bassBoost !== null
-        }
-
-        // Only shown when the firmware supports it: 2.13.42 rejects the
-        // command outright, 3.38.3 accepts it, so this appears or hides
-        // itself depending on what the headphones actually answer.
-        Row {
-          spacing: Style.spacing.sm
-          visible: root.bassBoost !== null
-
-          Button {
-            text: "Off"
-            bordered: true
-            selected: root.bassBoost === false
-            foreground: root.barForeground
-            onClicked: root.setBass(false)
-          }
-          Button {
-            text: "On"
-            bordered: true
-            selected: root.bassBoost === true
-            foreground: root.barForeground
-            onClicked: root.setBass(true)
-          }
-        }
-
-        PanelSeparator {
-          anchors.left: parent.left
-          anchors.right: parent.right
-          foreground: root.barForeground
-          visible: root.eq !== null
-        }
-
-        PanelSectionHeader {
-          text: "EQUALISER"
-          foreground: root.barForeground
-          visible: root.eq !== null
+          visible: root.eq !== null || root.bassBoost !== null
         }
 
         // Read-only. The curve reads fine over 0x1003 but the device rejects
         // every write shape tried against 0x1002, so there is nothing honest
         // to offer as a control yet — showing a curve the user cannot change
-        // is better than a slider that silently does nothing.
+        // beats a slider that silently does nothing.
         Item {
           anchors.left: parent.left
           anchors.right: parent.right
           visible: root.eq !== null
           height: Style.space(46)
-
-          readonly property int bands: root.eq ? root.eq.length : 0
-          readonly property real maxAbs: 25      // observed range of the presets
 
           // Zero line
           Rectangle {
@@ -449,8 +410,8 @@ Panel {
 
                 Rectangle {
                   width: parent.width
-                  // A flat band still gets a sliver, so the bar reads as
-                  // "zero" rather than "missing".
+                  // A flat band still gets a sliver, so it reads as "zero"
+                  // rather than "missing".
                   height: Math.max(2, Math.abs(parent.frac) * (parent.height / 2 - 8))
                   color: root.barForeground
                   opacity: parent.v === 0 ? 0.35 : 0.9
@@ -485,6 +446,44 @@ Panel {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
               }
+            }
+          }
+        }
+
+        // Bass boost sits under Sound as a labelled row, matching how
+        // Anti-wind sits under Noise control.
+        Item {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          height: bassRow.implicitHeight
+          visible: root.bassBoost !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Bass boost"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: bassRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.bassBoost === false
+              foreground: root.barForeground
+              onClicked: root.setBass(false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.bassBoost === true
+              foreground: root.barForeground
+              onClicked: root.setBass(true)
             }
           }
         }
