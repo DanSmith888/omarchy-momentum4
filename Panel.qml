@@ -85,6 +85,23 @@ Panel {
   // exactly as the phone app does.
   function applyPreset(name) { apply(["preset", name]) }
 
+  readonly property real eqRange: 6.0   // dB shown at full bar height
+
+  // Drag and scroll update the local curve immediately so the bar tracks the
+  // finger, and only commit on release — writing on every pixel of a drag
+  // would queue dozens of RFCOMM round trips behind the lock.
+  function setEqLocal(band, db) {
+    if (!root.eq) return
+    var next = root.eq.slice()
+    next[band] = Math.max(-root.eqRange, Math.min(root.eqRange, Math.round(db * 10) / 10))
+    root.eq = next
+  }
+
+  function commitEqBand(band) {
+    if (!root.eq) return
+    apply(["eq-set", String(band), String(root.eq[band])])
+  }
+
   // Which preset the current curve matches, or "" for a custom curve.
   // Compared in tenths of a dB to avoid round-trip float noise.
   function activePreset() {
@@ -474,22 +491,44 @@ Panel {
                 width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
                 height: parent.height
 
+                id: bandCell
                 readonly property real v: root.eq[index]
-                // Presets observed so far sit within about +/-4 dB.
-                readonly property real frac: Math.max(-1, Math.min(1, v / 4))
+                readonly property real frac: Math.max(-1, Math.min(1, v / root.eqRange))
+
+                // Drag vertically to set the band, or scroll to nudge it.
+                MouseArea {
+                  anchors.fill: parent
+                  acceptedButtons: Qt.LeftButton
+                  cursorShape: Qt.SizeVerCursor
+
+                  function dbAt(y) {
+                    var half = height / 2
+                    return ((half - y) / half) * root.eqRange
+                  }
+
+                  onPressed: function(m) { root.setEqLocal(index, dbAt(m.y)) }
+                  onPositionChanged: function(m) {
+                    if (pressed) root.setEqLocal(index, dbAt(m.y))
+                  }
+                  onReleased: root.commitEqBand(index)
+                  onWheel: function(w) {
+                    root.setEqLocal(index, bandCell.v + (w.angleDelta.y > 0 ? 0.5 : -0.5))
+                    root.commitEqBand(index)
+                  }
+                }
 
                 Rectangle {
                   width: parent.width
                   // A flat band still gets a sliver, so the bar reads as
                   // "zero" rather than "missing".
-                  height: Math.max(2, Math.abs(parent.frac) * (parent.height / 2 - 8))
+                  height: Math.max(2, Math.abs(bandCell.frac) * (bandCell.height / 2 - 8))
                   color: root.barForeground
-                  opacity: parent.v === 0 ? 0.35 : 0.9
+                  opacity: bandCell.v === 0 ? 0.35 : 0.9
                   radius: 1
                   anchors.horizontalCenter: parent.horizontalCenter
-                  y: parent.frac >= 0
-                     ? parent.height / 2 - height
-                     : parent.height / 2
+                  y: bandCell.frac >= 0
+                     ? bandCell.height / 2 - height
+                     : bandCell.height / 2
                 }
               }
             }
