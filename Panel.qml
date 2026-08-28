@@ -466,6 +466,13 @@ Panel {
           visible: root.soundMode !== ""
         }
 
+        PanelSectionHeader {
+          text: "EQUALISER"
+          foreground: root.barForeground
+          visible: root.eq !== null
+          opacity: root.eqMode ? 1.0 : 0.4
+        }
+
         // Presets are ours, not the device's — applying one writes all bands.
         // "Custom" lights when the curve matches no preset, which is what
         // happens as soon as a band is changed by hand.
