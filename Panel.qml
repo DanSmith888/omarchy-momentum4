@@ -45,20 +45,21 @@ Panel {
     actionProc.running = true
   }
 
-  // The device's raw value runs the opposite way to the label: a raw 100 is
-  // full transparency, not full ANC. The UI keeps the natural reading —
-  // Transparency on the left, ANC on the right — and inverts on the way to
-  // the hardware, so `uiLevel` is what the slider shows and 100 - uiLevel is
-  // what the device is told.
-  function rawFromUi(uiLevel) { return 100 - Math.max(0, Math.min(100, Math.round(uiLevel))) }
-  function uiFromRaw(raw) { return raw < 0 ? -1 : 100 - raw }
+  // Axis runs ANC (left) to Transparency (right), matching the Sennheiser
+  // iOS app. That ordering happens to match the hardware exactly — raw 0 is
+  // full ANC and raw 100 is full transparency — so the slider value is the
+  // device value and no conversion is needed. The earlier Transparency-left
+  // layout read more naturally but required inverting every read and write,
+  // and disagreed with the app.
+  function rawFromUi(uiLevel) { return Math.max(0, Math.min(100, Math.round(uiLevel))) }
+  function uiFromRaw(raw) { return raw }
 
-  readonly property int uiLevel: uiFromRaw(root.transparency)
+  readonly property int uiLevel: root.transparency
 
   function setUiLevel(level) {
-    var ui = Math.max(0, Math.min(100, Math.round(level)))
-    root.transparency = rawFromUi(ui)   // optimistic, so the slider does not snap back
-    apply(["transparency", String(rawFromUi(ui))])
+    var v = rawFromUi(level)
+    root.transparency = v          // optimistic, so the slider does not snap back
+    apply(["transparency", String(v)])
   }
 
   function setBass(on) {
@@ -221,7 +222,7 @@ Panel {
           visible: root.ancSupported
 
           Text {
-            text: "Transparency"
+            text: "ANC"
             color: Qt.darker(root.barForeground, 1.4)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -236,7 +237,7 @@ Panel {
             anchors.horizontalCenter: parent.horizontalCenter
           }
           Text {
-            text: "ANC"
+            text: "Transparency"
             color: Qt.darker(root.barForeground, 1.4)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -249,14 +250,14 @@ Panel {
           visible: root.ancSupported
 
           Button {
-            text: "Transparency"
+            text: "ANC"
             bordered: true
             selected: root.uiLevel === 0
             foreground: root.barForeground
             onClicked: root.setUiLevel(0)
           }
           Button {
-            text: "ANC"
+            text: "Transparency"
             bordered: true
             selected: root.uiLevel === 100
             foreground: root.barForeground

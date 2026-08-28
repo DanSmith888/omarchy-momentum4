@@ -23,9 +23,12 @@ Usage:
 """
 
 import argparse
+import fcntl
 import json
+import os
 import socket
 import subprocess
+import time
 import sys
 
 MAGIC = b"\xFF\x03"
@@ -46,6 +49,15 @@ CMD_GET_FIRMWARE = 0x1201
 # The GAIA service does not always advertise cleanly over SDP, so probe the
 # channels it is commonly found on, most likely first.
 COMMON_CHANNELS = [2, 1, 15, 14, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+# Only one process may hold the GAIA channel. The bar widget polls every 60s
+# and a firmware sweep runs for minutes, so without a lock they collide and
+# the loser can take the whole session down with it. Everything that opens
+# an RFCOMM socket goes through Momentum4, so serialising here covers m4ctl,
+# hp-status and gaia-probe at once.
+LOCK_PATH = os.path.join(
+    os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "m4ctl.lock")
+LOCK_TIMEOUT = 30.0
 
 
 def build(command, payload=b""):
@@ -91,6 +103,19 @@ class Momentum4:
         self.channel = None
 
     def __enter__(self):
+        self._lock = open(LOCK_PATH, "w")
+        deadline = time.monotonic() + LOCK_TIMEOUT
+        while True:
+            try:
+                fcntl.flock(self._lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() > deadline:
+                    raise SystemExit(
+                        "m4ctl: another process is using the headphones "
+                        f"(waited {LOCK_TIMEOUT:.0f}s for {LOCK_PATH})")
+                time.sleep(0.25)
+
         errors = []
         for ch in COMMON_CHANNELS:
             try:
@@ -111,9 +136,6 @@ class Momentum4:
         raise SystemExit("m4ctl: no GAIA channel found on "
                          f"{self.mac}\n  " + "\n  ".join(errors))
 
-    def __exit__(self, *_):
-        self.close()
-
     def close(self):
         if self.sock:
             try:
@@ -121,6 +143,17 @@ class Momentum4:
             except OSError:
                 pass
         self.sock = None
+
+    def __exit__(self, *_):
+        self.close()
+        lock = getattr(self, "_lock", None)
+        if lock is not None:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_UN)
+                lock.close()
+            except OSError:
+                pass
+            self._lock = None
 
     def exchange(self, command, payload=b"", timeout=3.0):
         """Return (vendor, command, payload, ok).
