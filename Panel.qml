@@ -131,7 +131,7 @@ Panel {
 
   Process {
     id: statusProc
-    command: [root.pluginDir + "bin/hp-status"]
+    command: [root.pluginDir + "bin/m4status"]
     stdout: StdioCollector {
       onStreamFinished: {
         var out = String(this.text).trim()

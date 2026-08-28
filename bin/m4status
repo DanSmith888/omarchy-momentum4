@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""hp-status — one JSON line describing the connected Bluetooth headset.
+"""m4status — one JSON line describing the connected Bluetooth headset.
 
     {"mac": "...", "name": "MOMENTUM 4", "battery": 90,
      "anc_supported": true, "anc": true, "transparency": 100}

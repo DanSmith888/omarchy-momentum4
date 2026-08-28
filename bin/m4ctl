@@ -169,7 +169,7 @@ def doctor():
     add(os.path.isdir(plug), "Plugin installed", plug,
         "omarchy plugin add <repo-url> --enable")
     missing = [f for f in ("Panel.qml", "manifest.json", "presets.json",
-                           "bin/hp-status", "bin/m4ctl")
+                           "bin/m4status", "bin/m4ctl")
                if not os.path.exists(os.path.join(plug, f))]
     add(not missing, "Plugin files present",
         "missing: " + ", ".join(missing) if missing else "",
@@ -234,7 +234,7 @@ COMMON_CHANNELS = [2, 1, 15, 14, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 # and a firmware sweep runs for minutes, so without a lock they collide and
 # the loser can take the whole session down with it. Everything that opens
 # an RFCOMM socket goes through Momentum4, so serialising here covers m4ctl,
-# hp-status and gaia-probe at once.
+# m4status and gaia-probe at once.
 LOCK_PATH = os.path.join(
     os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "m4ctl.lock")
 LOCK_TIMEOUT = 30.0
