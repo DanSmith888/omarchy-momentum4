@@ -103,6 +103,8 @@ def main():
                     state["bass_boost"] = d.get("bass_boost")
                     state["firmware"] = d.get("firmware")
                     state["controls"] = d.get("controls")
+                    state["mode"] = d.get("mode")
+                    state["antiwind"] = d.get("antiwind")
             except json.JSONDecodeError:
                 pass
 

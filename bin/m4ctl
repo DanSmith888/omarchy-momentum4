@@ -17,7 +17,9 @@ a backend for a status-bar widget.
 Usage:
   m4ctl get [--json]              show ANC, transparency, bass boost, battery
   m4ctl anc on|off
-  m4ctl transparency <0-100>      0 = full transparency, 100 = full ANC
+  m4ctl transparency <0-100>      0 = full ANC, 100 = full transparency
+  m4ctl mode adaptive|custom|off  the app's three-way noise control
+  m4ctl antiwind on|off           only meaningful in custom mode
   m4ctl bass on|off
   m4ctl battery                   percentage only, from BlueZ
 """
@@ -48,6 +50,14 @@ CMD_GET_FIRMWARE = 0x1201
 # Headphone Controls — the on-cup touch/button controls. Found by sweeping
 # either side of the app's switch: exactly one command moved. Note the sense
 # is inverted, 0 meaning enabled: it is a "disabled" flag.
+# 0x1a01 is a table of (id, value) pairs: 01 vv | 02 vv | 03 vv.
+# 0x1a00 writes the whole table back, so a field change is read-modify-write.
+CMD_SET_NOISE_TABLE = 0x1A00
+CMD_GET_NOISE_TABLE = 0x1A01
+IDX_ANTIWIND = 1        # byte[1] — 0 off, 1 on
+IDX_UNKNOWN = 3         # byte[3] — never seen non-zero
+IDX_ADAPTIVE = 5        # byte[5] — 1 adaptive, 0 custom
+
 CMD_SET_CONTROLS = 0x1606
 CMD_GET_CONTROLS = 0x1607
 
@@ -191,6 +201,52 @@ class Momentum4:
         parts = [int.from_bytes(p[i:i + 2], "big") for i in (0, 2, 4)]
         return ".".join(str(x) for x in parts)
 
+    def _noise_table(self):
+        _, _, p, ok = self.exchange(CMD_GET_NOISE_TABLE)
+        return bytearray(p) if (ok and len(p) >= 6) else None
+
+    def _write_noise_field(self, index, value):
+        """Read-modify-write one field; the device only accepts the whole table."""
+        t = self._noise_table()
+        if t is None:
+            raise SystemExit("m4ctl: device did not return the noise table")
+        t[index] = value
+        _, _, _, ok = self.exchange(CMD_SET_NOISE_TABLE, bytes(t))
+        if not ok:
+            raise SystemExit("m4ctl: device rejected the noise table write")
+
+    def mode(self):
+        """'off' | 'adaptive' | 'custom'.
+
+        The app presents one three-way control, but it is two things on the
+        wire: ANC on/off lives in 0x1a05, and adaptive-vs-custom is a field in
+        the 0x1a01 table. Off wins — when ANC is off the adaptive flag is
+        still whatever it was, and means nothing.
+        """
+        _, _, a, ok = self.exchange(CMD_GET_ANC_STATUS)
+        if not ok or not a:
+            return None
+        if not a[0]:
+            return "off"
+        t = self._noise_table()
+        if t is None:
+            return None
+        return "adaptive" if t[IDX_ADAPTIVE] else "custom"
+
+    def set_mode(self, mode):
+        if mode == "off":
+            self.set_anc(False)
+            return
+        self.set_anc(True)
+        self._write_noise_field(IDX_ADAPTIVE, 1 if mode == "adaptive" else 0)
+
+    def antiwind(self):
+        t = self._noise_table()
+        return None if t is None else bool(t[IDX_ANTIWIND])
+
+    def set_antiwind(self, on):
+        self._write_noise_field(IDX_ANTIWIND, 1 if on else 0)
+
     def controls(self):
         """True when the on-cup controls are enabled, None if unsupported."""
         _, _, p, ok = self.exchange(CMD_GET_CONTROLS)
@@ -212,6 +268,8 @@ class Momentum4:
             "anc": bool(anc[0]) if (anc_ok and anc) else None,
             "transparency": int(tr[0]) if (tr_ok and tr) else None,
             "bass_boost": bool(bb[0]) if (bb_ok and bb) else None,
+            "mode": self.mode(),
+            "antiwind": self.antiwind(),
             "controls": self.controls(),
             "firmware": self.firmware(),
             "channel": self.channel,
@@ -289,8 +347,12 @@ def main():
     p.add_argument("value", choices=["on", "off"])
     p = sub.add_parser("controls", parents=[common])
     p.add_argument("value", choices=["on", "off"])
+    p = sub.add_parser("mode", parents=[common])
+    p.add_argument("value", choices=["adaptive", "custom", "off"])
+    p = sub.add_parser("antiwind", parents=[common])
+    p.add_argument("value", choices=["on", "off"])
     p = sub.add_parser("transparency", parents=[common])
-    p.add_argument("level", type=int)
+    p.add_argument("level", type=int, help="0 = full ANC, 100 = full transparency")
     args = ap.parse_args()
     as_json = getattr(args, "json", False)
 
@@ -314,8 +376,10 @@ def main():
             if as_json:
                 print(json.dumps(st))
             else:
-                print(f"ANC:          {'on' if st['anc'] else 'off'}")
-                print(f"Transparency: {st['transparency']}  (0=transparent, 100=ANC)")
+                print(f"Mode:         {st.get('mode') or 'unknown'}")
+                aw = st.get("antiwind")
+                print(f"Anti-wind:    {'unknown' if aw is None else ('on' if aw else 'off')}")
+                print(f"Noise level:  {st['transparency']}  (0 = full ANC, 100 = full transparency)")
                 bb = st["bass_boost"]
                 print(f"Bass boost:   {'unsupported' if bb is None else ('on' if bb else 'off')}")
                 print(f"Battery:      {st['battery']}%" if st['battery'] is not None else "Battery:      unknown")
@@ -329,6 +393,10 @@ def main():
             dev.set_bass(args.value == "on")
         elif args.cmd == "controls":
             dev.set_controls(args.value == "on")
+        elif args.cmd == "mode":
+            dev.set_mode(args.value)
+        elif args.cmd == "antiwind":
+            dev.set_antiwind(args.value == "on")
         elif args.cmd == "transparency":
             dev.set_transparency(args.level)
 

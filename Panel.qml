@@ -25,6 +25,8 @@ Panel {
   property string deviceName: ""
   property bool ancSupported: false
   property bool ancOn: false
+  property string mode: ""            // "adaptive" | "custom" | "off"
+  property var antiwind: null
   property int transparency: -1
   property var bassBoost: null        // null = unsupported on this firmware
   property var controls: null         // on-cup touch/button controls
@@ -68,6 +70,13 @@ Panel {
     apply(["bass", on ? "on" : "off"])
   }
 
+  // Only Custom exposes the slider and anti-wind — Adaptive drives them
+  // itself and Off bypasses them, exactly as the Sennheiser app does.
+  readonly property bool customMode: root.mode === "custom"
+
+  function setMode(m) { if (root.mode !== m) apply(["mode", m]) }
+  function setAntiwind(on) { if (root.antiwind !== null) apply(["antiwind", on ? "on" : "off"]) }
+
   function setControls(on) {
     if (root.controls === null) return
     apply(["controls", on ? "on" : "off"])
@@ -89,6 +98,8 @@ Panel {
           if (typeof d.transparency === "number") root.transparency = d.transparency
           root.bassBoost = (typeof d.bass_boost === "boolean") ? d.bass_boost : null
           root.controls = (typeof d.controls === "boolean") ? d.controls : null
+          root.mode = d.mode || ""
+          root.antiwind = (typeof d.antiwind === "boolean") ? d.antiwind : null
         } catch (e) {
           root.percentage = -1
         }
@@ -204,20 +215,78 @@ Panel {
           visible: root.ancSupported
         }
 
-        // 0 = full transparency, 100 = full ANC. One axis, as the headphones
-        // model it — there is no separate ANC on/off that is not just an end
-        // of this range.
+        // Three-way mode, matching the app. On the wire this is two things:
+        // ANC on/off (0x1a05) and adaptive-vs-custom (0x1a01 id 3).
+        Row {
+          spacing: Style.spacing.sm
+          visible: root.ancSupported
+
+          Button {
+            text: "Adaptive"
+            bordered: true
+            selected: root.mode === "adaptive"
+            foreground: root.barForeground
+            onClicked: root.setMode("adaptive")
+          }
+          Button {
+            text: "Custom"
+            bordered: true
+            selected: root.mode === "custom"
+            foreground: root.barForeground
+            onClicked: root.setMode("custom")
+          }
+          Button {
+            text: "Off"
+            bordered: true
+            selected: root.mode === "off"
+            foreground: root.barForeground
+            onClicked: root.setMode("off")
+          }
+        }
+
+        // End labels track the mode the way the app does: percentages only
+        // when Custom is actually in charge of the split.
+        Item {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          height: ancLabel.implicitHeight
+          visible: root.ancSupported
+          opacity: root.customMode ? 1.0 : 0.45
+
+          Text {
+            id: ancLabel
+            anchors.left: parent.left
+            color: Qt.darker(root.barForeground, 1.4)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            text: root.mode === "adaptive" ? "ANC"
+                : root.mode === "off" ? "ANC 0%"
+                : "ANC " + (100 - root.uiLevel) + "%"
+          }
+          Text {
+            anchors.right: parent.right
+            color: Qt.darker(root.barForeground, 1.4)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            text: root.mode === "adaptive" ? "Transparency"
+                : root.mode === "off" ? "0% Transparency"
+                : root.uiLevel + "% Transparency"
+          }
+        }
+
         PanelSlider {
           id: slider
           anchors.left: parent.left
           anchors.right: parent.right
           visible: root.ancSupported
+          enabled: root.customMode
+          opacity: root.customMode ? 1.0 : 0.45
           bar: root.bar
           minimum: 0
           maximum: 100
           step: 5
           integer: true
-          value: root.uiLevel >= 0 ? root.uiLevel : 100
+          value: root.uiLevel >= 0 ? root.uiLevel : 0
           onMoved: function(v) { root.transparency = root.rawFromUi(v) }
           onReleased: function(v) { root.setUiLevel(v) }
         }
@@ -225,50 +294,39 @@ Panel {
         Item {
           anchors.left: parent.left
           anchors.right: parent.right
-          height: transparencyLabel.implicitHeight
-          visible: root.ancSupported
+          height: awRow.implicitHeight
+          visible: root.antiwind !== null
+          opacity: root.customMode ? 1.0 : 0.45
 
           Text {
-            text: "ANC"
-            color: Qt.darker(root.barForeground, 1.4)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
             anchors.left: parent.left
-          }
-          Text {
-            id: transparencyLabel
-            text: root.uiLevel >= 0 ? root.uiLevel + " / 100" : "—"
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Anti-wind"
             color: root.barForeground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            anchors.horizontalCenter: parent.horizontalCenter
           }
-          Text {
-            text: "Transparency"
-            color: Qt.darker(root.barForeground, 1.4)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+          Row {
+            id: awRow
             anchors.right: parent.right
-          }
-        }
+            spacing: Style.spacing.sm
 
-        Row {
-          spacing: Style.spacing.sm
-          visible: root.ancSupported
-
-          Button {
-            text: "ANC"
-            bordered: true
-            selected: root.uiLevel === 0
-            foreground: root.barForeground
-            onClicked: root.setUiLevel(0)
-          }
-          Button {
-            text: "Transparency"
-            bordered: true
-            selected: root.uiLevel === 100
-            foreground: root.barForeground
-            onClicked: root.setUiLevel(100)
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.antiwind === false
+              foreground: root.barForeground
+              enabled: root.customMode
+              onClicked: root.setAntiwind(false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.antiwind === true
+              foreground: root.barForeground
+              enabled: root.customMode
+              onClicked: root.setAntiwind(true)
+            }
           }
         }
 
