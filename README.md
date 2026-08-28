@@ -23,6 +23,12 @@ sudo systemctl restart bluetooth
 
 Without that line there is no `org.bluez.Battery1` and the widget stays hidden.
 
+**Battery also disappears while the headphones are plugged in over USB.** They
+enumerate as a USB audio card (`alsa_card.usb-Sonova_Consumer_Hearing_MOMENTUM_4_…`)
+and stop reporting battery over the Bluetooth link, so `Battery1` vanishes even
+though Bluetooth stays connected and `Experimental` is still set. This is the
+headphones' behaviour, not a fault in the setup — unplug them and it returns.
+
 ## Usage
 
 | Action | Effect |
