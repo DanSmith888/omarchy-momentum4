@@ -31,7 +31,7 @@ Panel {
   property var bassBoost: null        // null = unsupported on this firmware
   property var controls: null         // on-cup touch/button controls
   property var eq: null               // 5 signed band values, read-only
-  property bool charging: false       // USB cable attached
+  property bool usbConnected: false   // attached to THIS PC over USB
   property bool devicePresent: false  // any supported headset connected
   property bool busy: false
 
@@ -150,9 +150,9 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     // Battery vanishes from Bluetooth while the cable is attached, so show a
-    // charging glyph rather than an empty pill the user cannot interpret.
+    // USB glyph rather than an empty pill the user cannot interpret.
     text: root.present ? "󰋋  " + root.percentage + "%"
-        : root.charging ? "󰋋  󰂄"
+        : root.usbConnected ? "󰋋  󰌘"
         : "󰋋"
     hasVisualContent: text !== ""
     horizontalMargin: 8.75
@@ -162,7 +162,7 @@ Panel {
       if (root.deviceName === "") return "Headphones"
       var t = root.deviceName
       if (root.present) t += " — " + root.percentage + "%"
-      if (root.charging) t += root.present ? " (charging)" : " — charging"
+      if (root.usbConnected) t += root.present ? " (USB-C connected)" : " — USB-C connected"
       else if (!root.present) t += " — battery unknown"
       return t
     }
@@ -217,8 +217,8 @@ Panel {
         }
 
         Text {
-          text: root.present ? "Battery " + root.percentage + "%" + (root.charging ? " — charging" : "")
-              : root.charging ? "Charging — battery not reported over Bluetooth"
+          text: root.present ? "Battery " + root.percentage + "%" + (root.usbConnected ? " — USB-C connected" : "")
+              : root.usbConnected ? "USB-C connected — battery not reported over Bluetooth"
               : "Battery unknown"
           color: root.low ? Color.urgent : Qt.darker(root.barForeground, 1.3)
           font.family: Style.font.family

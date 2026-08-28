@@ -68,14 +68,15 @@ def battery(mac):
         return None
 
 
-def plugged_in(name):
-    """True when the headphones are connected by USB cable.
+def usb_connected(name):
+    """True when the headphones are attached to THIS machine over USB.
 
-    Neither BlueZ nor UPower knows whether the device is charging: Battery1
-    exposes only Percentage, so UPower reports state 0 ("unknown"). But the
-    headphones enumerate as a USB audio card while the cable is attached, so
-    the card's presence is a dependable proxy. It means "cable connected"
-    rather than literally "charging", which is what matters for the UI.
+    This is deliberately NOT called "charging". The signal is that the
+    headphones have enumerated as a USB audio card on this host, which happens
+    only when plugged into this PC. Charging from a wall adapter or another
+    machine is invisible here, and being plugged in does not mean charging is
+    happening. Neither BlueZ nor UPower can tell us the real thing: Battery1
+    exposes only Percentage, so UPower reports state 0, unknown.
     """
     try:
         with open("/proc/asound/cards") as f:
@@ -102,7 +103,7 @@ def main():
         return
 
     state = {"mac": mac, "name": name, "battery": battery(mac),
-             "charging": plugged_in(name),
+             "usb_connected": usb_connected(name),
              "anc_supported": False}
 
     backend = backend_for(name)
