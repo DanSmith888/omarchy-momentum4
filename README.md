@@ -1,6 +1,11 @@
 # omarchy-momentum4
 
-Control your Sennheiser Momentum 4 headphones from the [Omarchy](https://omarchy.org/) status bar — battery, noise control, EQ and more, without reaching for your phone.
+Control your **Sennheiser Momentum 4** headphones from the [Omarchy](https://omarchy.org/) status bar — battery, noise control, EQ and more, without reaching for your phone.
+
+![Battery in the bar](docs/bar.png)
+
+This is built for one set of headphones. It speaks the Momentum 4's own
+protocol, so it will not work with anything else.
 
 ![The panel](docs/panel.png)
 
@@ -16,7 +21,8 @@ Everything the Sennheiser app exposes that the headphones will tell us about:
 - **Bass boost**
 - **Touch controls** — enable or disable the on-cup controls
 
-Everything is read back from the headphones, so the panel always shows their real state — change something in the phone app and it follows.
+Everything is read back from the headphones, so the panel always shows their
+real state — change something in the phone app and it follows.
 
 ## Requirements
 
@@ -28,7 +34,8 @@ Everything is read back from the headphones, so the panel always shows their rea
 
 ### 1. Enable BlueZ experimental interfaces
 
-Battery comes from `org.bluez.Battery1`, which only exists when this is on. **Without it the widget has nothing to show and stays hidden.**
+Battery comes from `org.bluez.Battery1`, which only exists when this is on.
+**Without it the widget has nothing to show and stays hidden.**
 
 ```bash
 sudo sed -i 's/^#Experimental = false/Experimental = true/' /etc/bluetooth/main.conf
@@ -47,11 +54,13 @@ omarchy plugin add https://github.com/USER/omarchy-momentum4.git --enable
 m4ctl doctor
 ```
 
-Verifies every link from the headphones to the bar and tells you how to fix whatever is broken.
+Verifies every link from the headphones to the bar and tells you how to fix
+whatever is broken.
 
 ## Using it
 
-**Left-click** the battery pill to open the panel. **Scroll** on it to adjust noise level without opening anything. **Middle-click** to force a refresh.
+**Left-click** the battery pill to open the panel. **Scroll** on it to adjust
+noise level without opening anything. **Middle-click** to force a refresh.
 
 ## Command line
 
@@ -74,25 +83,30 @@ m4ctl doctor
 
 ## Good to know
 
-**Battery disappears while charging over USB.** The headphones stop reporting it over Bluetooth when the cable is attached. That's their behaviour, not a fault — the panel says "USB-C connected" instead.
+**Battery disappears while charging over USB.** The headphones stop reporting
+it over Bluetooth when the cable is attached. That's their behaviour, not a
+fault — the panel says "USB-C connected" instead.
 
-**EQ presets live in this repo, not the headphones.** The headphones only store the active curve; the phone app pushes preset values band by band, and so do we. Preset definitions are in [`presets.json`](presets.json) — edit them freely.
+**EQ presets live in this repo, not the headphones.** The headphones only store
+the active curve; the phone app pushes preset values band by band, and so do
+we. Preset definitions are in [`presets.json`](presets.json) — edit them
+freely.
 
-**Band labels are the app's.** The panel shows 63Hz/250Hz/1kHz/4kHz/8kHz to match the app; the hardware's real centre frequencies are 90/325/1500/6500/6500 Hz.
-
-## Other devices
-
-Battery works for any Bluetooth headset that reports it to BlueZ. Every other control is Momentum 4 specific, spoken over Qualcomm's GAIA protocol.
-
-Adding another device means writing a backend that answers `get --json` and registering a name pattern in `bin/m4status`.
+**Band labels are the app's.** The panel shows 63Hz/250Hz/1kHz/4kHz/8kHz to
+match the app; the hardware's real centre frequencies are 90/325/1500/6500/6500 Hz.
 
 ## Protocol
 
-The Momentum 4's GAIA command set is documented in [PROTOCOL.md](PROTOCOL.md) — command IDs, payload formats, the tools used to find them, and the traps involved. Useful if you're writing anything else for these headphones, on any platform.
+The Momentum 4's GAIA command set is documented in [PROTOCOL.md](PROTOCOL.md) —
+command IDs, payload formats, the tools used to find them, and the traps
+involved. Useful if you're writing anything else for these headphones, on any
+platform.
 
 ## Credits
 
-Protocol constants and the RFCOMM channel-probing approach are derived from [momentum4-control](https://github.com/f3Y0/momentum4-control) by f3Y0, MIT licensed.
+Protocol constants and the RFCOMM channel-probing approach are derived from
+[momentum4-control](https://github.com/f3Y0/momentum4-control) by f3Y0, MIT
+licensed.
 
 ## Licence
 
