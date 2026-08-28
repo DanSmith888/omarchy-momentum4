@@ -10,18 +10,34 @@ Bluetooth headphone battery and noise control in the [Omarchy](https://omarchy.o
 
 ## Install
 
-```bash
-omarchy plugin add https://github.com/<you>/omarchy-momentum4.git --enable
-```
+### Prerequisite
 
-Then enable BlueZ's experimental interfaces, which is what exposes battery at all:
+Battery is not optional dressing — the widget's whole reason to exist is the
+number in your bar, and it comes from BlueZ's `org.bluez.Battery1`, which only
+exists when experimental interfaces are on. **Do this first:**
 
 ```bash
 sudo sed -i 's/^#Experimental = false/Experimental = true/' /etc/bluetooth/main.conf
 sudo systemctl restart bluetooth
 ```
 
-Without that line there is no `org.bluez.Battery1` and the widget stays hidden.
+### Then
+
+```bash
+omarchy plugin add https://github.com/<you>/omarchy-momentum4.git --enable
+```
+
+### If anything looks wrong
+
+```bash
+m4ctl doctor
+```
+
+It checks every link between the headphones and the bar — rfkill, adapter
+power, pairing, the Experimental flag, battery, the GAIA channel, plugin files
+and bar placement — and prints the fix for whichever one is broken. An absent
+widget has had three distinct causes so far and they all look identical from
+the outside, which is why this exists.
 
 **Battery also disappears while the headphones are plugged in over USB.** They
 enumerate as a USB audio card (`alsa_card.usb-Sonova_Consumer_Hearing_MOMENTUM_4_…`)

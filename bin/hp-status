@@ -102,16 +102,22 @@ def main():
         print("{}")
         return
 
-    state = {"mac": mac, "name": name, "battery": battery(mac),
+    # battery() is the generic path, used for any headset. When a device
+    # backend runs it reports battery too, from the same source, so the local
+    # read is the fallback rather than a second query.
+    state = {"mac": mac, "name": name, "battery": None,
              "usb_connected": usb_connected(name),
              "anc_supported": False}
 
     backend = backend_for(name)
+    if not backend:
+        state["battery"] = battery(mac)
     if backend:
         out = run([backend, "get", "--json"])
         if out:
             try:
                 d = json.loads(out)
+                state["battery"] = d.get("battery")
                 # anc is None when the device rejected the query, so only
                 # claim support when a real value came back.
                 if d.get("anc") is not None:

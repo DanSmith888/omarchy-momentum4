@@ -93,6 +93,119 @@ PRESETS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             os.pardir, "presets.json")
 
 
+def _run(cmd, timeout=6):
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return r.returncode, r.stdout, r.stderr
+    except Exception as exc:
+        return 1, "", str(exc)
+
+
+def doctor():
+    """Check every link between the headphones and the bar widget.
+
+    An absent widget has had three distinct causes so far — a QML fault, the
+    widget hiding itself when battery was unreadable, and a polling delay —
+    and all three look identical from outside. This says which link is broken.
+    """
+    checks = []
+
+    def add(ok, label, detail="", fix=""):
+        checks.append((ok, label, detail, fix))
+
+    # 1. adapter
+    rc, out, _ = _run(["rfkill", "list", "bluetooth"])
+    blocked = "Soft blocked: yes" in out
+    add(not blocked, "Bluetooth not rfkill-blocked",
+        "soft blocked" if blocked else "",
+        "rfkill unblock bluetooth")
+
+    rc, out, _ = _run(["bluetoothctl", "show"])
+    powered = "Powered: yes" in out
+    add(powered, "Adapter powered", "" if powered else "adapter is off",
+        "bluetoothctl power on")
+
+    # 2. device
+    rc, out, _ = _run(["bluetoothctl", "devices", "Connected"])
+    mac = connected_mac()
+    add(bool(mac), "Headphones connected",
+        mac or "no MOMENTUM device connected",
+        "switch them on, or: bluetoothctl connect <mac>")
+
+    # 3. BlueZ experimental + battery
+    experimental = False
+    try:
+        with open("/etc/bluetooth/main.conf") as f:
+            experimental = any(l.strip().startswith("Experimental = true")
+                               for l in f)
+    except OSError:
+        pass
+    add(experimental, "BlueZ Experimental enabled",
+        "" if experimental else "org.bluez.Battery1 needs this",
+        "sudo sed -i 's/^#Experimental = false/Experimental = true/' "
+        "/etc/bluetooth/main.conf && sudo systemctl restart bluetooth")
+
+    if mac:
+        pct = battery(mac)
+        usb = _run(["sh", "-c", "grep -qi momentum /proc/asound/cards"])[0] == 0
+        add(pct is not None, "Battery readable",
+            f"{pct}%" if pct is not None
+            else ("headphones are on USB — they stop reporting battery over "
+                  "Bluetooth while plugged in" if usb else "no Battery1 on the device"),
+            "" if usb else "unplug USB, or re-pair the headphones")
+
+        # 4. GAIA
+        try:
+            with Momentum4(mac) as dev:
+                fw = dev.firmware()
+            add(bool(fw), "GAIA control channel", f"firmware {fw}" if fw else "",
+                "power-cycle the headphones")
+        except SystemExit as exc:
+            add(False, "GAIA control channel", str(exc),
+                "power-cycle the headphones, then reconnect")
+
+    # 5. plugin
+    plug = os.path.expanduser("~/.config/omarchy/plugins/momentum4")
+    add(os.path.isdir(plug), "Plugin installed", plug,
+        "omarchy plugin add <repo-url> --enable")
+    missing = [f for f in ("Panel.qml", "manifest.json", "presets.json",
+                           "bin/hp-status", "bin/m4ctl")
+               if not os.path.exists(os.path.join(plug, f))]
+    add(not missing, "Plugin files present",
+        "missing: " + ", ".join(missing) if missing else "",
+        "omarchy plugin update momentum4")
+
+    # 6. bar layout
+    try:
+        with open(os.path.expanduser("~/.config/omarchy/shell.json")) as f:
+            layout = json.load(f).get("bar", {}).get("layout", {})
+        placed = any("momentum4" == w.get("id")
+                     for sec in layout.values() for w in sec)
+    except (OSError, ValueError, AttributeError):
+        placed = False
+    add(placed, "Widget placed in the bar", "",
+        "omarchy plugin enable momentum4")
+
+    width = max(len(c[1]) for c in checks)
+    failed = 0
+    for ok, label, detail, fix in checks:
+        mark = "ok  " if ok else "FAIL"
+        line = f"  [{mark}] {label.ljust(width)}"
+        if detail:
+            line += f"  {detail}"
+        print(line)
+        if not ok and fix:
+            print(f"         -> {fix}")
+        failed += 0 if ok else 1
+    print()
+    if failed:
+        print(f"  {failed} check(s) failed.")
+    else:
+        print("  All checks passed. If the widget is still missing, give it "
+              "5s to poll, then: omarchy restart shell")
+    return 1 if failed else 0
+
+
 def load_presets():
     try:
         with open(PRESETS_PATH) as f:
@@ -453,6 +566,7 @@ def main():
     sub.add_parser("battery", parents=[common])
     sub.add_parser("eq", parents=[common])
     sub.add_parser("presets", parents=[common])
+    sub.add_parser("doctor", parents=[common])
     p = sub.add_parser("preset", parents=[common])
     p.add_argument("name")
     p = sub.add_parser("eq-set", parents=[common])
@@ -477,6 +591,9 @@ def main():
     p.add_argument("level", type=int, help="0 = full ANC, 100 = full transparency")
     args = ap.parse_args()
     as_json = getattr(args, "json", False)
+
+    if args.cmd == "doctor":
+        raise SystemExit(doctor())
 
     mac = getattr(args, "mac", None) or connected_mac()
     if not mac:
