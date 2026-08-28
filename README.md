@@ -142,12 +142,25 @@ specific commands and prints changes live. The loop:
 | Command | Field | Meaning |
 |---|---|---|
 | `0x1201` | 3× uint16 BE | Firmware version (`2,13,42` then `3,38,3`) |
-| `0x1a01` | byte[1] | **Anti-Wind** — observed `2 → 1`, so a mode within ANC, not a boolean |
+| `0x1a01` | — | Three `(id, value)` pairs: `01 vv │ 02 vv │ 03 vv` |
+| `0x1a01` | byte[1] (id 1) | **Anti-Wind** — `0` off, `1` on |
+| `0x1a01` | byte[3] (id 2) | Unknown, observed only as `0` |
+| `0x1a01` | byte[5] (id 3) | **Adaptive ANC** — `1` adaptive, `0` custom |
 | `0x1a03` | byte[0] | Noise control, 0 = full ANC … 100 = full transparency |
 | `0x1a05` | byte[0] | ANC on/off |
 | `0x1009` | byte[0] | Bass boost (rejected on firmware 2.x, works on 3.x) |
 
-`0x1a01`'s other five bytes are still unknown and are the obvious next target.
+`0x1a01` is a small table of `(id, value)` pairs rather than a flat struct,
+which is why single bytes move independently when settings change. Two of its
+three ids are decoded; id 2 has only ever been seen as `0`, so it needs a
+feature toggled that we have not found yet.
+
+Anti-Wind was also observed holding value `2` before the app's switch was first
+used — most likely an unset/auto default, though that is unconfirmed. Anything
+exposing Anti-Wind in a UI should treat a value other than `0`/`1` as "not
+explicitly set" rather than assuming on.
+
+ANC on/off is **not** in this table — it is `0x1a05`.
 
 ## Credits
 
