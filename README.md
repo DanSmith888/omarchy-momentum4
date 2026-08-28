@@ -149,6 +149,12 @@ specific commands and prints changes live. The loop:
 | `0x1a03` | byte[0] | Noise control, 0 = full ANC … 100 = full transparency |
 | `0x1a05` | byte[0] | ANC on/off |
 | `0x1009` | byte[0] | Bass boost (rejected on firmware 2.x, works on 3.x) |
+| `0x1607` / `0x1606` | byte[0] | **Headphone Controls** (on-cup touch/buttons). **Inverted**: `0` = enabled, `1` = disabled |
+
+Headphone Controls was *not* in the `0x1a01` table — a live watch of the known
+structures showed nothing, and only a full sweep either side of the app's
+switch found it, as a single changed line out of 1024 commands. Worth
+remembering: the quick watch only works once a sweep has located the command.
 
 `0x1a01` is a small table of `(id, value)` pairs rather than a flat struct,
 which is why single bytes move independently when settings change. Two of its
