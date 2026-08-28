@@ -11,18 +11,19 @@ protocol, so it will not work with anything else.
 
 ## What it does
 
-Everything the Sennheiser app exposes that the headphones will tell us about:
+Everything Sennheiser's **Smart Control** phone app exposes that the
+headphones will tell us about:
 
 - **Battery** in the bar, at a glance
 - **Noise control** — Adaptive / Custom / Off, with the ANC ↔ Transparency slider
 - **Anti-wind** — Off / Auto / Max
 - **Sound mode** — Graphic EQ or Speech Clarity
-- **Five-band EQ** — the app's eight presets, or drag any band yourself
+- **Five-band EQ** — Smart Control's eight presets, or drag any band yourself
 - **Bass boost**
 - **Touch controls** — enable or disable the on-cup controls
 
 Everything is read back from the headphones, so the panel always shows their
-real state — change something in the phone app and it follows.
+real state — change something in Smart Control and it follows.
 
 ## Requirements
 
@@ -88,12 +89,19 @@ it over Bluetooth when the cable is attached. That's their behaviour, not a
 fault — the panel says "USB-C connected" instead.
 
 **EQ presets live in this repo, not the headphones.** The headphones only store
-the active curve; the phone app pushes preset values band by band, and so do
-we. Preset definitions are in [`presets.json`](presets.json) — edit them
-freely.
+the active curve; Smart Control pushes preset values band by band, and so do we.
+Definitions are in [`presets.json`](presets.json).
 
-**Band labels are the app's.** The panel shows 63Hz/250Hz/1kHz/4kHz/8kHz to
-match the app; the hardware's real centre frequencies are 90/325/1500/6500/6500 Hz.
+You *can* edit them, but be aware of the trade-off: Smart Control identifies a
+preset by matching the curve values, so it shows a tick against whichever
+preset the headphones currently match. Change a preset's numbers here and
+applying it will no longer tick that preset in Smart Control — it will read as
+a custom curve. Leave them as shipped if you want the two to agree; change them
+if you prefer your own sound and don't mind the mismatch.
+
+**Band labels are Smart Control's.** The panel shows 63Hz/250Hz/1kHz/4kHz/8kHz
+to match it; the hardware's real centre frequencies are
+90/325/1500/6500/6500 Hz.
 
 ## Protocol
 

@@ -35,7 +35,7 @@ for an index out of range.
 
 | Command | Payload | Meaning |
 |---|---|---|
-| `0x1a05` | byte | ANC on/off — the "Off" leg of the app's three-way mode |
+| `0x1a05` | byte | ANC on/off — the "Off" leg of Smart Control's three-way mode |
 | `0x1a03` | byte | Noise level, 0 = full ANC … 100 = full transparency |
 | `0x1a01` | 6 bytes | Table of `(id, value)` pairs: `01 vv │ 02 vv │ 03 vv` |
 | `0x1a00` | 6 bytes | **Writes** the whole `0x1a01` table |
@@ -75,15 +75,20 @@ answer `0x83`, which is how the band count was confirmed.
 | `0x1011` | `<band>` | Unknown, reads zero |
 | `0x1013` | — | Unknown, reads `0000` |
 
-**Gain is dB × 10.** Confirmed against the app's Pop preset, which reads
+**Gain is dB × 10.** Confirmed against Smart Control's Pop preset, which reads
 `0/20/25/15/-20` on the wire and `0/2.0/2.5/1.5/-2.0` dB in the UI.
 
 `0x100f` and `0x1013` appeared with firmware 3.x — that update added the
 parametric EQ.
 
-**Presets are not on the device.** The app holds them and pushes each band in
-turn; there is no preset-switch command and no list to read. A run of `0x1082`
-notifications with one byte changing per packet is the app applying a preset.
+**Presets are not on the device.** Smart Control holds them and pushes each band
+in turn; there is no preset-switch command and no list to read. A run of
+`0x1082` notifications with one byte changing per packet is Smart Control
+applying a preset.
+
+Smart Control identifies the active preset by **matching the curve values**, so
+writing a preset's exact gains from anywhere — this plugin included — makes it
+tick that preset in the app. Write different values and it reads as custom.
 
 ### Sound mode, bass, controls
 
@@ -97,7 +102,7 @@ notifications with one byte changing per packet is the app applying a preset.
 | `0x1201` | 3× uint16 BE | Firmware version (`2,13,42` then `3,38,3`) |
 
 Speech Clarity does **not** stop the device answering EQ or bass-boost
-commands — the app greys them out as a UI convention only.
+commands — Smart Control greys them out as a UI convention only.
 
 ## ⚠️ 0x0607 takes the headphones offline
 
@@ -117,7 +122,7 @@ needed a power cycle. Probably a reset or disconnect in GAIA's core space.
 | `bin/gaia-diff` | Compare two probe captures |
 | `bin/gaia-watch` | Poll specific commands, reporting which byte changed |
 | `bin/gaia-listen` | Register for notifications and print what the device pushes |
-| `bin/eq-capture` | Record each EQ curve as presets are cycled in the app |
+| `bin/eq-capture` | Record each EQ curve as presets are cycled in Smart Control |
 
 Captures live in `probes/`, including both sides of the 2.13.42 → 3.38.3
 firmware update.
@@ -155,6 +160,6 @@ happened to be.
 - **Auto-pause** (pause when transparency is enabled)
 
 Neither appeared in any sweep, nor in the notification stream while they were
-toggled. They may be phone-side behaviour: the app detects the call and sends
+toggled. They may be phone-side behaviour: Smart Control detects the call and sends
 the transparency command the headphones already understand, needing no device
 setting at all.
