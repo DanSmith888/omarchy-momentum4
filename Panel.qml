@@ -168,8 +168,11 @@ Panel {
     onExited: { root.busy = false; root.refresh() }
   }
 
+  // Poll quickly while nothing is connected and slowly once something is.
+  // A flat 60s meant the widget could take a full minute to appear after the
+  // headphones woke and paired, which reads as "it isn't working".
   Timer {
-    interval: 60000
+    interval: root.devicePresent ? 60000 : 5000
     running: true
     repeat: true
     triggeredOnStart: true
