@@ -19,7 +19,9 @@ import sys
 import time
 
 M4 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "m4ctl")
-_ns = {}
+# __file__ must be present: m4ctl resolves presets.json relative to it at
+# import time, and exec() does not provide one.
+_ns = {"__file__": M4}
 exec(compile(open(M4).read().replace('if __name__ == "__main__":\n    main()', ""),
              M4, "exec"), _ns)
 

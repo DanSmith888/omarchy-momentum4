@@ -50,6 +50,9 @@ class _NS:
 
 
 _m4 = _NS()
+# m4ctl resolves presets.json relative to __file__ at import time; exec()
+# provides none, so supply it.
+_m4.__dict__["__file__"] = _M4_PATH
 with open(_M4_PATH) as _f:
     _src = _f.read().replace('if __name__ == "__main__":\n    main()', "")
 exec(compile(_src, _M4_PATH, "exec"), _m4.__dict__)
