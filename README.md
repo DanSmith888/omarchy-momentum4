@@ -120,6 +120,18 @@ them identified the firmware-version command and one capability change.
 Everything else was identical, so the update did **not** renumber the command
 space — `m4ctl` needed no changes to keep working.
 
+### 0x0607 takes the headphones down
+
+**Do not send `0x0607`.** Two independent sweeps of `0x0000-0x0FFF` — one with
+no pacing, one at 0.12s with reconnect handling — both died at exactly this id
+with "Connection reset by peer", after which the headphones dropped off the bus
+entirely and needed a power cycle. It is very likely a reset or disconnect in
+GAIA's core command space.
+
+`gaia-probe` now skips it unconditionally via its `DANGEROUS` set. The rest of
+`0x0000-0x0FFF` remains unswept as a result, so anything living there is still
+undiscovered.
+
 ### Sweeping is not free
 
 3.38.3 is markedly less tolerant of rapid probing. The sweep that ran clean on

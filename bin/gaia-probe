@@ -59,6 +59,14 @@ exec(compile(_src, _M4_PATH, "exec"), _m4.__dict__)
 DEFAULT_START = 0x1000
 DEFAULT_END = 0x1AFF
 
+# Commands that take the device down. 0x0607 was found the hard way: two
+# independent sweeps of 0x0000-0x0FFF, one with no pacing and one at 0.12s
+# with reconnect handling, both died at exactly this id — "Connection reset
+# by peer", then the headphones dropped off the bus entirely and needed a
+# power cycle. Whatever it is (a reset or disconnect in GAIA's core space),
+# nothing good comes of sending it.
+DANGEROUS = {0x0607}
+
 KNOWN = {
     0x0007: "register notification",
     0x1008: "set bass boost",
@@ -102,6 +110,12 @@ def main():
         in_range = set(ids)
         ids = [c for c in ids
                if not (c & 0x0100 and (c - 0x0100) in in_range)]
+
+    skipped = sorted(set(ids) & DANGEROUS)
+    if skipped:
+        ids = [c for c in ids if c not in DANGEROUS]
+        print("  skipping known-dangerous: "
+              + ", ".join(f"{c:#06x}" for c in skipped), file=sys.stderr, flush=True)
 
     supported, unsupported, silent = [], [], []
     reconnects = 0
