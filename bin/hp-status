@@ -102,6 +102,7 @@ def main():
                     # widget shows by hiding the control rather than guessing.
                     state["bass_boost"] = d.get("bass_boost")
                     state["firmware"] = d.get("firmware")
+                    state["controls"] = d.get("controls")
             except json.JSONDecodeError:
                 pass
 

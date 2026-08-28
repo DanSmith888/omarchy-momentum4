@@ -27,6 +27,7 @@ Panel {
   property bool ancOn: false
   property int transparency: -1
   property var bassBoost: null        // null = unsupported on this firmware
+  property var controls: null         // on-cup touch/button controls
   property bool busy: false
 
   readonly property bool present: percentage >= 0
@@ -67,6 +68,11 @@ Panel {
     apply(["bass", on ? "on" : "off"])
   }
 
+  function setControls(on) {
+    if (root.controls === null) return
+    apply(["controls", on ? "on" : "off"])
+  }
+
   Process {
     id: statusProc
     command: [root.pluginDir + "bin/hp-status"]
@@ -82,6 +88,7 @@ Panel {
           root.ancOn        = d.anc === true
           if (typeof d.transparency === "number") root.transparency = d.transparency
           root.bassBoost = (typeof d.bass_boost === "boolean") ? d.bass_boost : null
+          root.controls = (typeof d.controls === "boolean") ? d.controls : null
         } catch (e) {
           root.percentage = -1
         }
@@ -298,6 +305,42 @@ Panel {
             selected: root.bassBoost === true
             foreground: root.barForeground
             onClicked: root.setBass(true)
+          }
+        }
+
+        PanelSeparator {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          foreground: root.barForeground
+          visible: root.controls !== null
+        }
+
+        PanelSectionHeader {
+          text: "HEADPHONE CONTROLS"
+          foreground: root.barForeground
+          visible: root.controls !== null
+        }
+
+        // The on-cup touch/button controls. The device stores this inverted
+        // (0 = enabled), which m4ctl normalises, so this stays a plain
+        // enabled/disabled pair.
+        Row {
+          spacing: Style.spacing.sm
+          visible: root.controls !== null
+
+          Button {
+            text: "Off"
+            bordered: true
+            selected: root.controls === false
+            foreground: root.barForeground
+            onClicked: root.setControls(false)
+          }
+          Button {
+            text: "On"
+            bordered: true
+            selected: root.controls === true
+            foreground: root.barForeground
+            onClicked: root.setControls(true)
           }
         }
 
