@@ -455,103 +455,63 @@ Panel {
           }
         }
 
-        // Only shown when the firmware supports it: 2.13.42 rejects the
-        // command outright, 3.38.3 accepts it, so this appears or hides
-        // itself depending on what the headphones actually answer.
-        // Read-only. The curve reads fine over 0x1003 but the device rejects
-        // every write shape tried against 0x1002, so there is nothing honest
-        // to offer as a control yet — showing a curve the user cannot change
-        // is better than a slider that silently does nothing.
-        Item {
+        // One PanelSlider per band, rotated upright so it matches the noise
+        // control above rather than being a bespoke widget. Reads over
+        // 0x1003, writes per band over 0x1001.
+        Row {
           anchors.left: parent.left
           anchors.right: parent.right
           visible: root.eq !== null
-          height: Style.space(46)
+          spacing: Style.spacing.sm
 
-          readonly property int bands: root.eq ? root.eq.length : 0
-          readonly property real maxAbs: 25      // observed range of the presets
+          Repeater {
+            model: root.eq ? root.eq.length : 0
 
-          // Zero line
-          Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            height: 1
-            color: Qt.darker(root.barForeground, 2.0)
-          }
+            Column {
+              id: bandCol
+              width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
+              spacing: 2
 
-          Row {
-            anchors.fill: parent
-            spacing: Style.spacing.sm
-
-            Repeater {
-              model: root.eq ? root.eq.length : 0
+              readonly property real v: root.eq[index]
 
               Item {
-                width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
-                height: parent.height
+                width: parent.width
+                height: Style.space(74)
 
-                id: bandCell
-                readonly property real v: root.eq[index]
-                readonly property real frac: Math.max(-1, Math.min(1, v / root.eqRange))
-
-                // Drag vertically to set the band, or scroll to nudge it.
-                MouseArea {
-                  anchors.fill: parent
-                  acceptedButtons: Qt.LeftButton
-                  cursorShape: Qt.SizeVerCursor
-
-                  function dbAt(y) {
-                    var half = height / 2
-                    return ((half - y) / half) * root.eqRange
-                  }
-
-                  onPressed: function(m) { root.setEqLocal(index, dbAt(m.y)) }
-                  onPositionChanged: function(m) {
-                    if (pressed) root.setEqLocal(index, dbAt(m.y))
-                  }
-                  onReleased: root.commitEqBand(index)
-                  onWheel: function(w) {
-                    root.setEqLocal(index, bandCell.v + (w.angleDelta.y > 0 ? 0.5 : -0.5))
+                PanelSlider {
+                  // Rotated, so its width becomes the visible height.
+                  width: parent.height
+                  rotation: -90
+                  anchors.centerIn: parent
+                  bar: root.bar
+                  minimum: -root.eqRange
+                  maximum: root.eqRange
+                  step: 0.5
+                  value: bandCol.v
+                  onMoved: function(nv) { root.setEqLocal(index, nv) }
+                  onReleased: function(nv) {
+                    root.setEqLocal(index, nv)
                     root.commitEqBand(index)
                   }
                 }
-
-                Rectangle {
-                  width: parent.width
-                  // A flat band still gets a sliver, so the bar reads as
-                  // "zero" rather than "missing".
-                  height: Math.max(2, Math.abs(bandCell.frac) * (bandCell.height / 2 - 8))
-                  color: root.barForeground
-                  opacity: bandCell.v === 0 ? 0.35 : 0.9
-                  radius: 1
-                  anchors.horizontalCenter: parent.horizontalCenter
-                  y: bandCell.frac >= 0
-                     ? bandCell.height / 2 - height
-                     : bandCell.height / 2
-                }
               }
-            }
-          }
-        }
 
-        Item {
-          anchors.left: parent.left
-          anchors.right: parent.right
-          visible: root.eq !== null
-          height: eqLabels.implicitHeight
-
-          Row {
-            id: eqLabels
-            anchors.fill: parent
-            spacing: Style.spacing.sm
-            Repeater {
-              model: root.eq ? root.eq.length : 0
               Text {
-                width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
+                width: parent.width
                 horizontalAlignment: Text.AlignHCenter
-                text: (root.eq[index] > 0 ? "+" : "") + root.eq[index].toFixed(1)
-                color: Qt.darker(root.barForeground, 1.4)
+                text: (bandCol.v > 0 ? "+" : "") + bandCol.v.toFixed(1)
+                color: root.barForeground
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              // The app's nominal labels; the device's real centres are
+              // 90/325/1500/6500/6500 Hz.
+              Text {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: ["63Hz", "250Hz", "1kHz", "4kHz", "8kHz"][index]
+                color: Qt.darker(root.barForeground, 1.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
               }
@@ -604,7 +564,7 @@ Panel {
         }
 
         PanelSectionHeader {
-          text: "HEADPHONE CONTROLS"
+          text: "TOUCH CONTROLS"
           foreground: root.barForeground
           visible: root.controls !== null
         }
