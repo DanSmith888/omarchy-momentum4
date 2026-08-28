@@ -84,9 +84,28 @@ m4ctl doctor
 
 ## Good to know
 
-**Battery disappears while charging over USB.** The headphones stop reporting
-it over Bluetooth when the cable is attached. That's their behaviour, not a
-fault — the panel says "USB-C connected" instead.
+**Battery disappears whenever the USB-C cable is attached.** The headphones
+stop reporting it over Bluetooth while charging, from any power source. That's
+their behaviour, not a fault.
+
+**The "USB-C connected" label only appears when the cable goes to this PC.**
+There is no charge-state command to ask, and BlueZ can't help — `Battery1`
+exposes a percentage and nothing else, so UPower reports state 0, *unknown*.
+What we can detect is that the headphones have enumerated as a **USB audio
+card** on this host: plugged into a computer they present a sound device, and
+`m4status` matches the first word of their Bluetooth name against
+`/proc/asound/cards`.
+
+So the label is really "plugged into this machine", not "charging":
+
+| Cable goes to | Battery over Bluetooth | Panel shows |
+|---|---|---|
+| This PC | gone | "USB-C connected" |
+| A wall charger, or another machine | gone | nothing — battery is simply blank |
+
+A plain charger moves no data, enumerates no audio card, and is invisible to
+us. And being plugged into the PC doesn't prove charging is happening either —
+only that the cable is in.
 
 **EQ presets live in this repo, not the headphones.** The headphones only store
 the active curve; Smart Control pushes preset values band by band, and so do we.
