@@ -105,6 +105,7 @@ Panel {
           root.controls = (typeof d.controls === "boolean") ? d.controls : null
           root.mode = d.mode || ""
           root.antiwind = d.antiwind || ""
+          root.eq = (Array.isArray(d.eq) && d.eq.length) ? d.eq : null
         } catch (e) {
           root.percentage = -1
           root.devicePresent = false
@@ -455,7 +456,6 @@ Panel {
                   opacity: parent.v === 0 ? 0.35 : 0.9
                   radius: 1
                   anchors.horizontalCenter: parent.horizontalCenter
-                  anchors.bottom: parent.frac >= 0 ? undefined : undefined
                   y: parent.frac >= 0
                      ? parent.height / 2 - height
                      : parent.height / 2
