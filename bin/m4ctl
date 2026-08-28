@@ -63,6 +63,14 @@ ANTIWIND_REV = {v: k for k, v in ANTIWIND.items()}
 IDX_UNKNOWN = 3         # byte[3] — never seen non-zero
 IDX_ADAPTIVE = 5        # byte[5] — 1 adaptive, 0 custom
 
+# EQ. The getter REQUIRES a payload argument — with an empty payload it
+# answers 0x1183 (error), which is why every empty-payload sweep recorded it
+# as "rejected" and missed it entirely. The argument's value is ignored; any
+# byte returns the active curve. Five signed bytes, one per band.
+CMD_SET_EQ = 0x1002
+CMD_GET_EQ = 0x1003
+EQ_BANDS = 5
+
 CMD_SET_CONTROLS = 0x1606
 CMD_GET_CONTROLS = 0x1607
 
@@ -258,6 +266,13 @@ class Momentum4:
                              f"{', '.join(ANTIWIND_REV)}")
         self._write_noise_field(IDX_ANTIWIND, ANTIWIND_REV[value])
 
+    def eq(self):
+        """Active EQ curve as a list of signed values, or None."""
+        _, _, p, ok = self.exchange(CMD_GET_EQ, bytes([0]))
+        if not ok or len(p) < EQ_BANDS:
+            return None
+        return [v - 256 if v > 127 else v for v in p[:EQ_BANDS]]
+
     def controls(self):
         """True when the on-cup controls are enabled, None if unsupported."""
         _, _, p, ok = self.exchange(CMD_GET_CONTROLS)
@@ -282,6 +297,7 @@ class Momentum4:
             "mode": self.mode(),
             "antiwind": self.antiwind(),
             "controls": self.controls(),
+            "eq": self.eq(),
             "firmware": self.firmware(),
             "channel": self.channel,
         }
@@ -352,6 +368,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("get", parents=[common])
     sub.add_parser("battery", parents=[common])
+    sub.add_parser("eq", parents=[common])
     p = sub.add_parser("anc", parents=[common])
     p.add_argument("value", choices=["on", "off"])
     p = sub.add_parser("bass", parents=[common])
@@ -370,6 +387,15 @@ def main():
     mac = getattr(args, "mac", None) or connected_mac()
     if not mac:
         raise SystemExit("m4ctl: no connected Momentum 4 found (use --mac)")
+
+    if args.cmd == "eq":
+        with Momentum4(mac) as dev:
+            curve = dev.eq()
+        if curve is None:
+            raise SystemExit("m4ctl: device did not return an EQ curve")
+        print(json.dumps({"eq": curve}) if as_json
+              else " ".join(f"{v:+d}" for v in curve))
+        return
 
     if args.cmd == "battery":
         pct = battery(mac)
@@ -395,6 +421,9 @@ def main():
                 print(f"Battery:      {st['battery']}%" if st['battery'] is not None else "Battery:      unknown")
                 ct = st.get("controls")
                 print(f"Controls:     {'unsupported' if ct is None else ('on' if ct else 'off')}")
+                eq = st.get("eq")
+                if eq:
+                    print(f"EQ:           {' '.join(f'{v:+d}' for v in eq)}")
                 if st.get("firmware"):
                     print(f"Firmware:     {st['firmware']}")
         elif args.cmd == "anc":

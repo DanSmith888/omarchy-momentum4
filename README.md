@@ -120,6 +120,42 @@ them identified the firmware-version command and one capability change.
 Everything else was identical, so the update did **not** renumber the command
 space — `m4ctl` needed no changes to keep working.
 
+### "Rejected" does not mean unsupported
+
+The single most important lesson here. `gaia-probe` sends **empty payloads**, and
+a command that needs an argument answers with the *error* form — indistinguishable
+from a genuinely unsupported command:
+
+```
+0x1003 with empty payload  -> 0x1183 (error)
+0x1003 with payload 00     -> 0x1103 (ok), returns the EQ curve
+```
+
+Every sweep therefore filed EQ under "rejected" and moved on. Roughly 490
+commands per sweep land in that bucket, and an unknown number of them are
+parameterised getters rather than dead ends.
+
+Three separate sweeps came back clean for EQ, phone-call settings and
+auto-pause because of this. Sweeping harder would never have found them.
+
+### Notifications beat sweeping
+
+`bin/gaia-listen` registers for notification features and prints what the device
+pushes unprompted. It found the EQ command in seconds after three sweeps had
+failed, because the device volunteers the command id when a setting changes —
+no need to guess an argument.
+
+The protocol has three response forms, not two:
+
+| Form | Meaning |
+|---|---|
+| `command \| 0x0100` | success |
+| `command \| 0x0180` | error |
+| `command \| 0x0080` | unsolicited notification |
+
+Registering feature ids 0-32 got 13 accepted: 0, 2, 3, 4, 8, 9, 10, 11, 12, 13,
+16, 20, 32. The reference implementation only knew about 8, 12 and 13.
+
 ### 0x0607 takes the headphones down
 
 **Do not send `0x0607`.** Two independent sweeps of `0x0000-0x0FFF` — one with
@@ -187,6 +223,7 @@ specific commands and prints changes live. The loop:
 | `0x1a05` | byte[0] | ANC on/off — the "Off" leg of the app's three-way mode |
 | `0x1a00` | whole table | **Writes** the `0x1a01` table; field changes are read-modify-write |
 | `0x1009` | byte[0] | Bass boost (rejected on firmware 2.x, works on 3.x) |
+| `0x1003` / `0x1002` | 5 signed bytes | **EQ curve**, one per band. The getter *requires* an argument; its value is ignored |
 | `0x1607` / `0x1606` | byte[0] | **Headphone Controls** (on-cup touch/buttons). **Inverted**: `0` = enabled, `1` = disabled |
 
 Headphone Controls was *not* in the `0x1a01` table — a live watch of the known
