@@ -26,6 +26,7 @@ Panel {
   property bool ancSupported: false
   property bool ancOn: false
   property int transparency: -1
+  property var bassBoost: null        // null = unsupported on this firmware
   property bool busy: false
 
   readonly property bool present: percentage >= 0
@@ -44,10 +45,25 @@ Panel {
     actionProc.running = true
   }
 
-  function setTransparency(level) {
-    var v = Math.max(0, Math.min(100, Math.round(level)))
-    root.transparency = v          // optimistic, so the slider does not snap back
-    apply(["transparency", String(v)])
+  // The device's raw value runs the opposite way to the label: a raw 100 is
+  // full transparency, not full ANC. The UI keeps the natural reading —
+  // Transparency on the left, ANC on the right — and inverts on the way to
+  // the hardware, so `uiLevel` is what the slider shows and 100 - uiLevel is
+  // what the device is told.
+  function rawFromUi(uiLevel) { return 100 - Math.max(0, Math.min(100, Math.round(uiLevel))) }
+  function uiFromRaw(raw) { return raw < 0 ? -1 : 100 - raw }
+
+  readonly property int uiLevel: uiFromRaw(root.transparency)
+
+  function setUiLevel(level) {
+    var ui = Math.max(0, Math.min(100, Math.round(level)))
+    root.transparency = rawFromUi(ui)   // optimistic, so the slider does not snap back
+    apply(["transparency", String(rawFromUi(ui))])
+  }
+
+  function setBass(on) {
+    if (root.bassBoost === null) return
+    apply(["bass", on ? "on" : "off"])
   }
 
   Process {
@@ -64,6 +80,7 @@ Panel {
           root.ancSupported = d.anc_supported === true
           root.ancOn        = d.anc === true
           if (typeof d.transparency === "number") root.transparency = d.transparency
+          root.bassBoost = (typeof d.bass_boost === "boolean") ? d.bass_boost : null
         } catch (e) {
           root.percentage = -1
         }
@@ -117,8 +134,8 @@ Panel {
     }
 
     onWheelMoved: function(delta) {
-      if (!root.ancSupported || root.transparency < 0) return
-      root.setTransparency(root.transparency + (delta > 0 ? 10 : -10))
+      if (!root.ancSupported || root.uiLevel < 0) return
+      root.setUiLevel(root.uiLevel + (delta > 0 ? 10 : -10))
     }
   }
 
@@ -130,7 +147,10 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(300))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(420))
+    // panelColumn.implicitHeight excludes its own anchors.margins, so passing
+    // it raw made the panel two paddings too short and clipped the last row.
+    contentHeight: panel.fittedContentHeight(
+      panelColumn.implicitHeight + Style.spacing.panelPadding * 2, Style.space(560))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -138,7 +158,7 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onMoveRequested: function(dx, dy) {
-        if (dx !== 0) root.setTransparency(root.transparency + dx * 10)
+        if (dx !== 0) root.setUiLevel(root.uiLevel + dx * 10)
       }
 
       Column {
@@ -189,9 +209,9 @@ Panel {
           maximum: 100
           step: 5
           integer: true
-          value: root.transparency >= 0 ? root.transparency : 100
-          onMoved: function(v) { root.transparency = Math.round(v) }
-          onReleased: function(v) { root.setTransparency(v) }
+          value: root.uiLevel >= 0 ? root.uiLevel : 100
+          onMoved: function(v) { root.transparency = root.rawFromUi(v) }
+          onReleased: function(v) { root.setUiLevel(v) }
         }
 
         Item {
@@ -209,7 +229,7 @@ Panel {
           }
           Text {
             id: transparencyLabel
-            text: root.transparency >= 0 ? root.transparency + " / 100" : "—"
+            text: root.uiLevel >= 0 ? root.uiLevel + " / 100" : "—"
             color: root.barForeground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -231,16 +251,52 @@ Panel {
           Button {
             text: "Transparency"
             bordered: true
-            selected: root.transparency === 0
+            selected: root.uiLevel === 0
             foreground: root.barForeground
-            onClicked: root.setTransparency(0)
+            onClicked: root.setUiLevel(0)
           }
           Button {
             text: "ANC"
             bordered: true
-            selected: root.transparency === 100
+            selected: root.uiLevel === 100
             foreground: root.barForeground
-            onClicked: root.setTransparency(100)
+            onClicked: root.setUiLevel(100)
+          }
+        }
+
+        PanelSeparator {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          foreground: root.barForeground
+          visible: root.bassBoost !== null
+        }
+
+        PanelSectionHeader {
+          text: "BASS BOOST"
+          foreground: root.barForeground
+          visible: root.bassBoost !== null
+        }
+
+        // Only shown when the firmware supports it: 2.13.42 rejects the
+        // command outright, 3.38.3 accepts it, so this appears or hides
+        // itself depending on what the headphones actually answer.
+        Row {
+          spacing: Style.spacing.sm
+          visible: root.bassBoost !== null
+
+          Button {
+            text: "Off"
+            bordered: true
+            selected: root.bassBoost === false
+            foreground: root.barForeground
+            onClicked: root.setBass(false)
+          }
+          Button {
+            text: "On"
+            bordered: true
+            selected: root.bassBoost === true
+            foreground: root.barForeground
+            onClicked: root.setBass(true)
           }
         }
 

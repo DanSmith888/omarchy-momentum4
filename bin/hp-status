@@ -98,6 +98,10 @@ def main():
                     state["anc_supported"] = True
                     state["anc"] = d["anc"]
                     state["transparency"] = d.get("transparency")
+                    # None means the firmware rejected the query, which the
+                    # widget shows by hiding the control rather than guessing.
+                    state["bass_boost"] = d.get("bass_boost")
+                    state["firmware"] = d.get("firmware")
             except json.JSONDecodeError:
                 pass
 
