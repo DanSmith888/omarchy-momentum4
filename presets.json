@@ -1,17 +1,106 @@
 {
   "_comment": [
     "EQ presets, gains in dB per band at 63Hz / 250Hz / 1kHz / 4kHz / 8kHz.",
-    "The headphones store only the active curve — the Sennheiser app holds the",
-    "preset definitions and pushes them band by band. These were captured off",
-    "the wire by watching what the app wrote, so they are the real values, not",
-    "estimates. Edit freely; m4ctl reads this file at run time.",
-    "verified: seen settle on the wire and confirmed by name.",
-    "unverified: captured in sequence but the name is inferred from click order."
+    "The headphones store only the active curve \u2014 the Sennheiser app holds the",
+    "preset definitions and pushes them band by band. Applying one here does",
+    "the same thing. Values transcribed from the app by the owner.",
+    "Device units are dB x 10; m4ctl converts."
   ],
-  "bands": ["63Hz", "250Hz", "1kHz", "4kHz", "8kHz"],
+  "bands": [
+    "63Hz",
+    "250Hz",
+    "1kHz",
+    "4kHz",
+    "8kHz"
+  ],
   "presets": [
-    { "name": "Neutral", "gains": [0, 0, 0, 0, 0], "verified": true },
-    { "name": "Rock",    "gains": [-2.0, -1.5, 0, 3.5, 4.0], "verified": false },
-    { "name": "Pop",     "gains": [0, 2.0, 2.5, 1.5, -2.0], "verified": true }
+    {
+      "name": "Neutral",
+      "gains": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "verified": true
+    },
+    {
+      "name": "Rock",
+      "gains": [
+        0,
+        2,
+        2.5,
+        1.5,
+        -2
+      ],
+      "verified": true
+    },
+    {
+      "name": "Pop",
+      "gains": [
+        0,
+        -2.5,
+        0,
+        2.5,
+        0
+      ],
+      "verified": true
+    },
+    {
+      "name": "Dance",
+      "gains": [
+        3.5,
+        2,
+        -1.5,
+        1.5,
+        3
+      ],
+      "verified": true
+    },
+    {
+      "name": "Hip-Hop",
+      "gains": [
+        3,
+        1.5,
+        -1.5,
+        0,
+        -1.5
+      ],
+      "verified": true
+    },
+    {
+      "name": "Classical",
+      "gains": [
+        -1,
+        -1.5,
+        0,
+        3.5,
+        4
+      ],
+      "verified": true
+    },
+    {
+      "name": "Movie",
+      "gains": [
+        0,
+        0,
+        2,
+        2,
+        -2
+      ],
+      "verified": true
+    },
+    {
+      "name": "Jazz",
+      "gains": [
+        -3.2,
+        0,
+        2.2,
+        2.2,
+        0
+      ],
+      "verified": true
+    }
   ]
 }

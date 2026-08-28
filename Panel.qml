@@ -32,7 +32,7 @@ Panel {
   property var controls: null         // on-cup touch/button controls
   property var eq: null               // 5 gains in dB
   property var presets: []            // from presets.json via m4ctl
-  property bool usbConnected: false   // attached to THIS PC over USB
+  property bool charging: false       // USB cable attached
   property bool devicePresent: false  // any supported headset connected
   property bool busy: false
 
@@ -82,11 +82,11 @@ Panel {
   function setAntiwind(v) { if (root.antiwind !== "") apply(["antiwind", v]) }
 
   // The device has no preset storage: applying one writes all five bands,
-  // which is exactly what the phone app does.
+  // exactly as the phone app does.
   function applyPreset(name) { apply(["preset", name]) }
 
-  // Which preset, if any, the current curve matches. Compared in tenths of a
-  // dB to avoid floating-point noise from the round trip.
+  // Which preset the current curve matches, or "" for a custom curve.
+  // Compared in tenths of a dB to avoid round-trip float noise.
   function activePreset() {
     if (!root.eq) return ""
     for (var i = 0; i < root.presets.length; i++) {
@@ -133,7 +133,7 @@ Panel {
     }
   }
 
-  // Preset definitions are static, so load them once rather than every poll.
+  // Preset definitions are static; load once rather than on every poll.
   Process {
     id: presetProc
     command: [root.pluginDir + "bin/m4ctl", "presets", "--json"]
@@ -182,9 +182,9 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     // Battery vanishes from Bluetooth while the cable is attached, so show a
-    // USB glyph rather than an empty pill the user cannot interpret.
+    // charging glyph rather than an empty pill the user cannot interpret.
     text: root.present ? "󰋋  " + root.percentage + "%"
-        : root.usbConnected ? "󰋋  󰌘"
+        : root.charging ? "󰋋  󰂄"
         : "󰋋"
     hasVisualContent: text !== ""
     horizontalMargin: 8.75
@@ -194,7 +194,7 @@ Panel {
       if (root.deviceName === "") return "Headphones"
       var t = root.deviceName
       if (root.present) t += " — " + root.percentage + "%"
-      if (root.usbConnected) t += root.present ? " (USB-C connected)" : " — USB-C connected"
+      if (root.charging) t += root.present ? " (charging)" : " — charging"
       else if (!root.present) t += " — battery unknown"
       return t
     }
@@ -249,8 +249,8 @@ Panel {
         }
 
         Text {
-          text: root.present ? "Battery " + root.percentage + "%" + (root.usbConnected ? " — USB-C connected" : "")
-              : root.usbConnected ? "USB-C connected — battery not reported over Bluetooth"
+          text: root.present ? "Battery " + root.percentage + "%" + (root.charging ? " — charging" : "")
+              : root.charging ? "Charging — battery not reported over Bluetooth"
               : "Battery unknown"
           color: root.low ? Color.urgent : Qt.darker(root.barForeground, 1.3)
           font.family: Style.font.family
@@ -398,16 +398,18 @@ Panel {
           anchors.left: parent.left
           anchors.right: parent.right
           foreground: root.barForeground
-          visible: root.eq !== null || root.bassBoost !== null
+          visible: root.bassBoost !== null
         }
 
         PanelSectionHeader {
           text: "SOUND"
           foreground: root.barForeground
-          visible: root.eq !== null || root.bassBoost !== null
+          visible: root.bassBoost !== null || root.eq !== null
         }
 
-        // Presets are ours, not the device's — see applyPreset().
+        // Presets are ours, not the device's — applying one writes all bands.
+        // "Custom" lights when the curve matches no preset, which is what
+        // happens as soon as a band is changed by hand.
         Flow {
           anchors.left: parent.left
           anchors.right: parent.right
@@ -424,15 +426,33 @@ Panel {
               onClicked: root.applyPreset(modelData.name)
             }
           }
+
+          Button {
+            text: "Custom"
+            bordered: true
+            selected: root.activePreset() === ""
+            foreground: root.barForeground
+            // Reflects state rather than setting it: clicking does nothing,
+            // because "custom" is simply "matches no preset".
+            onClicked: {}
+          }
         }
 
-        // The curve reads over 0x1003 and writes per band over 0x1001; the
-        // display below is a read-out of whatever is currently loaded.
+        // Only shown when the firmware supports it: 2.13.42 rejects the
+        // command outright, 3.38.3 accepts it, so this appears or hides
+        // itself depending on what the headphones actually answer.
+        // Read-only. The curve reads fine over 0x1003 but the device rejects
+        // every write shape tried against 0x1002, so there is nothing honest
+        // to offer as a control yet — showing a curve the user cannot change
+        // is better than a slider that silently does nothing.
         Item {
           anchors.left: parent.left
           anchors.right: parent.right
           visible: root.eq !== null
           height: Style.space(46)
+
+          readonly property int bands: root.eq ? root.eq.length : 0
+          readonly property real maxAbs: 25      // observed range of the presets
 
           // Zero line
           Rectangle {
@@ -455,13 +475,13 @@ Panel {
                 height: parent.height
 
                 readonly property real v: root.eq[index]
-                // Presets observed so far sit within about +/-6 dB.
-                readonly property real frac: Math.max(-1, Math.min(1, v / 6))
+                // Presets observed so far sit within about +/-4 dB.
+                readonly property real frac: Math.max(-1, Math.min(1, v / 4))
 
                 Rectangle {
                   width: parent.width
-                  // A flat band still gets a sliver, so it reads as "zero"
-                  // rather than "missing".
+                  // A flat band still gets a sliver, so the bar reads as
+                  // "zero" rather than "missing".
                   height: Math.max(2, Math.abs(parent.frac) * (parent.height / 2 - 8))
                   color: root.barForeground
                   opacity: parent.v === 0 ? 0.35 : 0.9
@@ -491,8 +511,6 @@ Panel {
               Text {
                 width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
                 horizontalAlignment: Text.AlignHCenter
-                // Band labels are the app's nominal 63/250/1k/4k/8k; the
-                // device's real centres are 90/325/1500/6500/6500 Hz.
                 text: (root.eq[index] > 0 ? "+" : "") + root.eq[index].toFixed(1)
                 color: Qt.darker(root.barForeground, 1.4)
                 font.family: Style.font.family
@@ -502,8 +520,7 @@ Panel {
           }
         }
 
-        // Bass boost sits under Sound as a labelled row, matching how
-        // Anti-wind sits under Noise control.
+        // Labelled row, matching how Anti-wind sits under Noise control.
         Item {
           anchors.left: parent.left
           anchors.right: parent.right
