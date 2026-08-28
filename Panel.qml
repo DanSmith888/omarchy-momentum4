@@ -30,6 +30,7 @@ Panel {
   property int transparency: -1
   property var bassBoost: null        // null = unsupported on this firmware
   property var controls: null         // on-cup touch/button controls
+  property var eq: null               // 5 signed band values, read-only
   property bool charging: false       // USB cable attached
   property bool devicePresent: false  // any supported headset connected
   property bool busy: false
@@ -393,6 +394,98 @@ Panel {
             selected: root.bassBoost === true
             foreground: root.barForeground
             onClicked: root.setBass(true)
+          }
+        }
+
+        PanelSeparator {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          foreground: root.barForeground
+          visible: root.eq !== null
+        }
+
+        PanelSectionHeader {
+          text: "EQUALISER"
+          foreground: root.barForeground
+          visible: root.eq !== null
+        }
+
+        // Read-only. The curve reads fine over 0x1003 but the device rejects
+        // every write shape tried against 0x1002, so there is nothing honest
+        // to offer as a control yet — showing a curve the user cannot change
+        // is better than a slider that silently does nothing.
+        Item {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          visible: root.eq !== null
+          height: Style.space(46)
+
+          readonly property int bands: root.eq ? root.eq.length : 0
+          readonly property real maxAbs: 25      // observed range of the presets
+
+          // Zero line
+          Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            height: 1
+            color: Qt.darker(root.barForeground, 2.0)
+          }
+
+          Row {
+            anchors.fill: parent
+            spacing: Style.spacing.sm
+
+            Repeater {
+              model: root.eq ? root.eq.length : 0
+
+              Item {
+                width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
+                height: parent.height
+
+                readonly property int v: root.eq[index]
+                readonly property real frac: Math.max(-1, Math.min(1, v / 25))
+
+                Rectangle {
+                  width: parent.width
+                  // A flat band still gets a sliver, so the bar reads as
+                  // "zero" rather than "missing".
+                  height: Math.max(2, Math.abs(parent.frac) * (parent.height / 2 - 8))
+                  color: root.barForeground
+                  opacity: parent.v === 0 ? 0.35 : 0.9
+                  radius: 1
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  anchors.bottom: parent.frac >= 0 ? undefined : undefined
+                  y: parent.frac >= 0
+                     ? parent.height / 2 - height
+                     : parent.height / 2
+                }
+              }
+            }
+          }
+        }
+
+        Item {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          visible: root.eq !== null
+          height: eqLabels.implicitHeight
+
+          Row {
+            id: eqLabels
+            anchors.fill: parent
+            spacing: Style.spacing.sm
+            Repeater {
+              model: root.eq ? root.eq.length : 0
+              Text {
+                width: (parent.width - (parent.spacing * (root.eq.length - 1))) / root.eq.length
+                horizontalAlignment: Text.AlignHCenter
+                text: (root.eq[index] > 0 ? "+" : "") + root.eq[index]
+                color: Qt.darker(root.barForeground, 1.4)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+            }
           }
         }
 
