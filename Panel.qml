@@ -250,7 +250,7 @@ Panel {
     // panelColumn.implicitHeight excludes its own anchors.margins, so passing
     // it raw made the panel two paddings too short and clipped the last row.
     contentHeight: panel.fittedContentHeight(
-      panelColumn.implicitHeight + Style.spacing.panelPadding * 2, Style.space(560))
+      panelColumn.implicitHeight + Style.spacing.panelPadding * 2, Style.space(720))
 
     PanelKeyCatcher {
       id: keyCatcher
