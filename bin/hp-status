@@ -126,6 +126,7 @@ def main():
                     state["mode"] = d.get("mode")
                     state["antiwind"] = d.get("antiwind")
                     state["eq"] = d.get("eq")
+                    state["sound_mode"] = d.get("sound_mode")
             except json.JSONDecodeError:
                 pass
 

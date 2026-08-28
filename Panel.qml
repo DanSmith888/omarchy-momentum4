@@ -32,6 +32,7 @@ Panel {
   property var controls: null         // on-cup touch/button controls
   property var eq: null               // 5 gains in dB
   property var presets: []            // from presets.json via m4ctl
+  property string soundMode: ""       // "eq" | "speech"
   property bool charging: false       // USB cable attached
   property bool devicePresent: false  // any supported headset connected
   property bool busy: false
@@ -84,6 +85,13 @@ Panel {
   // The device has no preset storage: applying one writes all five bands,
   // exactly as the phone app does.
   function applyPreset(name) { apply(["preset", name]) }
+
+  // Speech Clarity replaces the graphic EQ and bass boost in the app. The
+  // device still answers those commands in either mode, so the dimming here
+  // is a deliberate mirror of the app rather than something the hardware
+  // enforces.
+  readonly property bool eqMode: root.soundMode !== "speech"
+  function setSoundMode(m) { if (root.soundMode !== m) apply(["sound-mode", m]) }
 
   readonly property real eqRange: 6.0   // dB shown at full bar height
 
@@ -142,6 +150,7 @@ Panel {
           root.mode = d.mode || ""
           root.antiwind = d.antiwind || ""
           root.eq = (Array.isArray(d.eq) && d.eq.length) ? d.eq : null
+          root.soundMode = d.sound_mode || ""
         } catch (e) {
           root.percentage = -1
           root.devicePresent = false
@@ -427,6 +436,26 @@ Panel {
           visible: root.bassBoost !== null || root.eq !== null
         }
 
+        Row {
+          spacing: Style.spacing.sm
+          visible: root.soundMode !== ""
+
+          Button {
+            text: "Graphic EQ"
+            bordered: true
+            selected: root.soundMode === "eq"
+            foreground: root.barForeground
+            onClicked: root.setSoundMode("eq")
+          }
+          Button {
+            text: "Speech Clarity"
+            bordered: true
+            selected: root.soundMode === "speech"
+            foreground: root.barForeground
+            onClicked: root.setSoundMode("speech")
+          }
+        }
+
         // Presets are ours, not the device's — applying one writes all bands.
         // "Custom" lights when the curve matches no preset, which is what
         // happens as soon as a band is changed by hand.
@@ -435,6 +464,8 @@ Panel {
           anchors.right: parent.right
           spacing: Style.spacing.sm
           visible: root.presets.length > 0 && root.eq !== null
+          enabled: root.eqMode
+          opacity: root.eqMode ? 1.0 : 0.4
 
           Repeater {
             model: root.presets
@@ -465,6 +496,8 @@ Panel {
           anchors.left: parent.left
           anchors.right: parent.right
           visible: root.eq !== null
+          enabled: root.eqMode
+          opacity: root.eqMode ? 1.0 : 0.4
           spacing: Style.spacing.sm
 
           Repeater {
@@ -528,6 +561,8 @@ Panel {
           anchors.right: parent.right
           height: bassRow.implicitHeight
           visible: root.bassBoost !== null
+          enabled: root.eqMode
+          opacity: root.eqMode ? 1.0 : 0.4
 
           Text {
             anchors.left: parent.left

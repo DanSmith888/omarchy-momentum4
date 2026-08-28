@@ -101,6 +101,15 @@ def load_presets():
         return []
 EQ_BANDS = 5
 
+# Sound mode: Graphic EQ vs Speech Clarity. Found by listening rather than
+# sweeping — it lives at 0x080x, and the 0x0xxx range was never swept because
+# 0x0607 kills the device. 0x0804 reads (and echoes its argument rather than
+# writing); 0x0803 writes and takes a 16-bit value.
+CMD_GET_SOUND_MODE = 0x0804
+CMD_SET_SOUND_MODE = 0x0803
+SOUND_MODES = {1: "eq", 2: "speech"}
+SOUND_MODES_REV = {v: k for k, v in SOUND_MODES.items()}
+
 CMD_SET_CONTROLS = 0x1606
 CMD_GET_CONTROLS = 0x1607
 
@@ -331,6 +340,21 @@ class Momentum4:
         if not ok:
             raise SystemExit("m4ctl: device rejected the EQ write")
 
+    def sound_mode(self):
+        """'eq' | 'speech', or None."""
+        _, _, p, ok = self.exchange(CMD_GET_SOUND_MODE)
+        if not ok or len(p) < 2:
+            return None
+        return SOUND_MODES.get(int.from_bytes(p[:2], "big"))
+
+    def set_sound_mode(self, mode):
+        if mode not in SOUND_MODES_REV:
+            raise SystemExit("m4ctl: sound mode must be eq or speech")
+        _, _, _, ok = self.exchange(CMD_SET_SOUND_MODE,
+                                    SOUND_MODES_REV[mode].to_bytes(2, "big"))
+        if not ok:
+            raise SystemExit("m4ctl: device rejected the sound mode")
+
     def controls(self):
         """True when the on-cup controls are enabled, None if unsupported."""
         _, _, p, ok = self.exchange(CMD_GET_CONTROLS)
@@ -355,6 +379,7 @@ class Momentum4:
             "mode": self.mode(),
             "antiwind": self.antiwind(),
             "controls": self.controls(),
+            "sound_mode": self.sound_mode(),
             "eq": self.eq(),
             "firmware": self.firmware(),
             "channel": self.channel,
@@ -442,6 +467,8 @@ def main():
     p.add_argument("value", choices=["on", "off"])
     p = sub.add_parser("controls", parents=[common])
     p.add_argument("value", choices=["on", "off"])
+    p = sub.add_parser("sound-mode", parents=[common])
+    p.add_argument("value", choices=["eq", "speech"])
     p = sub.add_parser("mode", parents=[common])
     p.add_argument("value", choices=["adaptive", "custom", "off"])
     p = sub.add_parser("antiwind", parents=[common])
@@ -525,6 +552,7 @@ def main():
                 print(f"Battery:      {st['battery']}%" if st['battery'] is not None else "Battery:      unknown")
                 ct = st.get("controls")
                 print(f"Controls:     {'unsupported' if ct is None else ('on' if ct else 'off')}")
+                print(f"Sound mode:   {st.get('sound_mode') or 'unknown'}")
                 eq = st.get("eq")
                 if eq:
                     print(f"EQ:           {' '.join(f'{v:+.1f}' for v in eq)} dB")
@@ -534,6 +562,8 @@ def main():
             dev.set_anc(args.value == "on")
         elif args.cmd == "bass":
             dev.set_bass(args.value == "on")
+        elif args.cmd == "sound-mode":
+            dev.set_sound_mode(args.value)
         elif args.cmd == "controls":
             dev.set_controls(args.value == "on")
         elif args.cmd == "mode":
