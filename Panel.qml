@@ -30,6 +30,8 @@ Panel {
   property int transparency: -1
   property var bassBoost: null        // null = unsupported on this firmware
   property var controls: null         // on-cup touch/button controls
+  property bool charging: false       // USB cable attached
+  property bool devicePresent: false  // any supported headset connected
   property bool busy: false
 
   readonly property bool present: percentage >= 0
@@ -88,9 +90,11 @@ Panel {
     stdout: StdioCollector {
       onStreamFinished: {
         var out = String(this.text).trim()
-        if (out === "") { root.percentage = -1; return }
+        if (out === "") { root.percentage = -1; root.devicePresent = false; return }
         try {
           var d = JSON.parse(out)
+          root.devicePresent = !!d.mac
+          root.charging     = d.charging === true
           root.percentage   = (typeof d.battery === "number") ? d.battery : -1
           root.deviceName   = d.name || ""
           root.ancSupported = d.anc_supported === true
@@ -102,6 +106,7 @@ Panel {
           root.antiwind = d.antiwind || ""
         } catch (e) {
           root.percentage = -1
+          root.devicePresent = false
         }
       }
     }
@@ -132,7 +137,7 @@ Panel {
     onTriggered: if (!root.busy) root.refresh()
   }
 
-  visible: present
+  visible: root.devicePresent
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -142,14 +147,23 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.present ? "󰋋  " + root.percentage + "%" : "󰋋"
+    // Battery vanishes from Bluetooth while the cable is attached, so show a
+    // charging glyph rather than an empty pill the user cannot interpret.
+    text: root.present ? "󰋋  " + root.percentage + "%"
+        : root.charging ? "󰋋  󰂄"
+        : "󰋋"
     hasVisualContent: text !== ""
     horizontalMargin: 8.75
     verticalPadding: 8.75
     active: root.low
-    tooltipText: root.deviceName !== ""
-      ? root.deviceName + (root.present ? " — " + root.percentage + "%" : "")
-      : "Headphones"
+    tooltipText: {
+      if (root.deviceName === "") return "Headphones"
+      var t = root.deviceName
+      if (root.present) t += " — " + root.percentage + "%"
+      if (root.charging) t += root.present ? " (charging)" : " — charging"
+      else if (!root.present) t += " — battery unknown"
+      return t
+    }
 
     onPressed: function(b) {
       if (b === Qt.MiddleButton) root.refresh()
@@ -201,7 +215,9 @@ Panel {
         }
 
         Text {
-          text: root.present ? "Battery " + root.percentage + "%" : "Battery unknown"
+          text: root.present ? "Battery " + root.percentage + "%" + (root.charging ? " — charging" : "")
+              : root.charging ? "Charging — battery not reported over Bluetooth"
+              : "Battery unknown"
           color: root.low ? Color.urgent : Qt.darker(root.barForeground, 1.3)
           font.family: Style.font.family
           font.pixelSize: Style.font.caption

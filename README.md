@@ -197,6 +197,21 @@ selected, and showing percentages only in Custom — as the app does.
 Writing a field means reading `0x1a01`, changing one byte and writing the whole
 table back via `0x1a00`; the device does not accept partial writes.
 
+## EQ: readable, not writable
+
+The curve reads fine, but writing is unsolved:
+
+| | |
+|---|---|
+| Read 5-band curve | `0x1003` + any single-byte argument |
+| Write | `0x1002` rejects every payload shape tried — bare curve, argument+curve, band/value pairs — always `0x1182` with payload `05` |
+| Switch preset | command not located |
+
+`gaia-listen` cannot help here. It reports what the headphones push *to us*, so
+it reveals the resulting state but never the command the phone sent to cause it.
+Cracking the write path needs either a better guess at the payload shape or a
+capture of the phone's own link.
+
 ## Still to decode
 
 From the app's Noise control sub-page:

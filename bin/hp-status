@@ -68,6 +68,24 @@ def battery(mac):
         return None
 
 
+def plugged_in(name):
+    """True when the headphones are connected by USB cable.
+
+    Neither BlueZ nor UPower knows whether the device is charging: Battery1
+    exposes only Percentage, so UPower reports state 0 ("unknown"). But the
+    headphones enumerate as a USB audio card while the cable is attached, so
+    the card's presence is a dependable proxy. It means "cable connected"
+    rather than literally "charging", which is what matters for the UI.
+    """
+    try:
+        with open("/proc/asound/cards") as f:
+            cards = f.read()
+    except OSError:
+        return None
+    key = (name or "").split()[0].upper()
+    return bool(key) and key in cards.upper()
+
+
 def backend_for(name):
     for pattern, script in BACKENDS:
         if pattern.search(name or ""):
@@ -84,6 +102,7 @@ def main():
         return
 
     state = {"mac": mac, "name": name, "battery": battery(mac),
+             "charging": plugged_in(name),
              "anc_supported": False}
 
     backend = backend_for(name)
@@ -105,6 +124,7 @@ def main():
                     state["controls"] = d.get("controls")
                     state["mode"] = d.get("mode")
                     state["antiwind"] = d.get("antiwind")
+                    state["eq"] = d.get("eq")
             except json.JSONDecodeError:
                 pass
 
