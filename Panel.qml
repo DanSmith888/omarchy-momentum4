@@ -26,7 +26,7 @@ Panel {
   property bool ancSupported: false
   property bool ancOn: false
   property string mode: ""            // "adaptive" | "custom" | "off"
-  property var antiwind: null
+  property string antiwind: ""
   property int transparency: -1
   property var bassBoost: null        // null = unsupported on this firmware
   property var controls: null         // on-cup touch/button controls
@@ -75,7 +75,7 @@ Panel {
   readonly property bool customMode: root.mode === "custom"
 
   function setMode(m) { if (root.mode !== m) apply(["mode", m]) }
-  function setAntiwind(on) { if (root.antiwind !== null) apply(["antiwind", on ? "on" : "off"]) }
+  function setAntiwind(v) { if (root.antiwind !== "") apply(["antiwind", v]) }
 
   function setControls(on) {
     if (root.controls === null) return
@@ -99,7 +99,7 @@ Panel {
           root.bassBoost = (typeof d.bass_boost === "boolean") ? d.bass_boost : null
           root.controls = (typeof d.controls === "boolean") ? d.controls : null
           root.mode = d.mode || ""
-          root.antiwind = (typeof d.antiwind === "boolean") ? d.antiwind : null
+          root.antiwind = d.antiwind || ""
         } catch (e) {
           root.percentage = -1
         }
@@ -295,7 +295,7 @@ Panel {
           anchors.left: parent.left
           anchors.right: parent.right
           height: awRow.implicitHeight
-          visible: root.antiwind !== null
+          visible: root.antiwind !== ""
           opacity: root.customMode ? 1.0 : 0.45
 
           Text {
@@ -311,21 +311,31 @@ Panel {
             anchors.right: parent.right
             spacing: Style.spacing.sm
 
+            // Tri-state, matching the app: the main switch and its Auto/Max
+            // sub-setting are one field on the device.
             Button {
               text: "Off"
               bordered: true
-              selected: root.antiwind === false
+              selected: root.antiwind === "off"
               foreground: root.barForeground
               enabled: root.customMode
-              onClicked: root.setAntiwind(false)
+              onClicked: root.setAntiwind("off")
             }
             Button {
-              text: "On"
+              text: "Auto"
               bordered: true
-              selected: root.antiwind === true
+              selected: root.antiwind === "auto"
               foreground: root.barForeground
               enabled: root.customMode
-              onClicked: root.setAntiwind(true)
+              onClicked: root.setAntiwind("auto")
+            }
+            Button {
+              text: "Max"
+              bordered: true
+              selected: root.antiwind === "max"
+              foreground: root.barForeground
+              enabled: root.customMode
+              onClicked: root.setAntiwind("max")
             }
           }
         }

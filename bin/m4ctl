@@ -19,7 +19,7 @@ Usage:
   m4ctl anc on|off
   m4ctl transparency <0-100>      0 = full ANC, 100 = full transparency
   m4ctl mode adaptive|custom|off  the app's three-way noise control
-  m4ctl antiwind on|off           only meaningful in custom mode
+  m4ctl antiwind off|auto|max     only meaningful in custom mode
   m4ctl bass on|off
   m4ctl battery                   percentage only, from BlueZ
 """
@@ -54,7 +54,12 @@ CMD_GET_FIRMWARE = 0x1201
 # 0x1a00 writes the whole table back, so a field change is read-modify-write.
 CMD_SET_NOISE_TABLE = 0x1A00
 CMD_GET_NOISE_TABLE = 0x1A01
-IDX_ANTIWIND = 1        # byte[1] — 0 off, 1 on
+# byte[1] is tri-state, not a boolean: the app's Anti-wind switch and its
+# Auto/Max sub-setting are the same field. Writing 1 for "on" silently forces
+# Max and discards the user's Auto choice, which an earlier version did.
+IDX_ANTIWIND = 1
+ANTIWIND = {0: "off", 1: "max", 2: "auto"}
+ANTIWIND_REV = {v: k for k, v in ANTIWIND.items()}
 IDX_UNKNOWN = 3         # byte[3] — never seen non-zero
 IDX_ADAPTIVE = 5        # byte[5] — 1 adaptive, 0 custom
 
@@ -241,11 +246,17 @@ class Momentum4:
         self._write_noise_field(IDX_ADAPTIVE, 1 if mode == "adaptive" else 0)
 
     def antiwind(self):
+        """'off' | 'auto' | 'max', or None if unreadable."""
         t = self._noise_table()
-        return None if t is None else bool(t[IDX_ANTIWIND])
+        if t is None:
+            return None
+        return ANTIWIND.get(t[IDX_ANTIWIND], f"unknown({t[IDX_ANTIWIND]})")
 
-    def set_antiwind(self, on):
-        self._write_noise_field(IDX_ANTIWIND, 1 if on else 0)
+    def set_antiwind(self, value):
+        if value not in ANTIWIND_REV:
+            raise SystemExit(f"m4ctl: anti-wind must be one of "
+                             f"{', '.join(ANTIWIND_REV)}")
+        self._write_noise_field(IDX_ANTIWIND, ANTIWIND_REV[value])
 
     def controls(self):
         """True when the on-cup controls are enabled, None if unsupported."""
@@ -350,7 +361,7 @@ def main():
     p = sub.add_parser("mode", parents=[common])
     p.add_argument("value", choices=["adaptive", "custom", "off"])
     p = sub.add_parser("antiwind", parents=[common])
-    p.add_argument("value", choices=["on", "off"])
+    p.add_argument("value", choices=["off", "auto", "max"])
     p = sub.add_parser("transparency", parents=[common])
     p.add_argument("level", type=int, help="0 = full ANC, 100 = full transparency")
     args = ap.parse_args()
@@ -377,8 +388,7 @@ def main():
                 print(json.dumps(st))
             else:
                 print(f"Mode:         {st.get('mode') or 'unknown'}")
-                aw = st.get("antiwind")
-                print(f"Anti-wind:    {'unknown' if aw is None else ('on' if aw else 'off')}")
+                print(f"Anti-wind:    {st.get('antiwind') or 'unknown'}")
                 print(f"Noise level:  {st['transparency']}  (0 = full ANC, 100 = full transparency)")
                 bb = st["bass_boost"]
                 print(f"Bass boost:   {'unsupported' if bb is None else ('on' if bb else 'off')}")
@@ -396,7 +406,7 @@ def main():
         elif args.cmd == "mode":
             dev.set_mode(args.value)
         elif args.cmd == "antiwind":
-            dev.set_antiwind(args.value == "on")
+            dev.set_antiwind(args.value)
         elif args.cmd == "transparency":
             dev.set_transparency(args.level)
 
