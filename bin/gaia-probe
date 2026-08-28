@@ -67,6 +67,7 @@ KNOWN = {
     0x1A03: "get transparency",
     0x1A04: "set ANC status",
     0x1A05: "get ANC status",
+    0x1201: "get firmware version",
 }
 
 
@@ -79,6 +80,10 @@ def main():
     ap.add_argument("--even", action="store_true",
                     help="also probe even IDs (likely setters — riskier)")
     ap.add_argument("--timeout", type=float, default=0.6)
+    ap.add_argument("--delay", type=float, default=0.01,
+                    help="seconds between commands; raise it if the device "
+                         "drops the GAIA session mid-sweep (firmware 3.38.3 is "
+                         "markedly less tolerant of rapid sweeps than 2.13.42)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
@@ -132,7 +137,7 @@ def main():
                     dev.close()
                     time.sleep(2.0)
                     dev.__enter__()
-            time.sleep(0.01)
+            time.sleep(args.delay)
 
     # A success reply is weaker evidence than it looks: this firmware acks most
     # unknown IDs in a range with an identical one-byte payload. Commands whose

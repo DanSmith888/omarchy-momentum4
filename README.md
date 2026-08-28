@@ -105,6 +105,27 @@ Everything else returned the bulk ack. Note `0x1a05`'s real payload happens to
 equal the bulk ack byte, so payload-distinctiveness alone would miss it — known
 commands are labelled from a table for that reason.
 
+## Firmware differences
+
+Captures either side of the 2.13.42 → 3.38.3 update are in `probes/`. Diffing
+them identified the firmware-version command and one capability change.
+
+| Command | 2.13.42 | 3.38.3 | Meaning |
+|---|---|---|---|
+| `0x1009` get bass boost | rejected | **acked** | Bass boost is unsupported on 2.x and works on 3.x |
+| `0x1201` | `0002000d002a` | `000300260003` | **Firmware version** — three big-endian uint16s: `2,13,42` then `3,38,3` |
+| `0x100f`, `0x1013` | absent | present | New, undecoded |
+| `0x1007` | `f9` | — | No longer distinct |
+
+Everything else was identical, so the update did **not** renumber the command
+space — `m4ctl` needed no changes to keep working.
+
+### Sweeping is not free
+
+3.38.3 is markedly less tolerant of rapid probing. The sweep that ran clean on
+2.13.42 at default spacing dropped the GAIA session on 3.38.3 and left the
+headphones needing a re-pair. Use `--delay 0.08` or higher.
+
 ## Credits
 
 Protocol constants and the RFCOMM channel-probing approach for the Momentum 4

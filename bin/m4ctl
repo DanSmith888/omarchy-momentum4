@@ -38,6 +38,10 @@ CMD_SET_TRANSPARENCY = 0x1A02
 CMD_GET_TRANSPARENCY = 0x1A03
 CMD_SET_ANC_STATUS = 0x1A04
 CMD_GET_ANC_STATUS = 0x1A05
+# Identified by diffing probe captures either side of a firmware update: the
+# payload is three big-endian uint16s that matched 2.13.42 and then 3.38.3
+# exactly.
+CMD_GET_FIRMWARE = 0x1201
 
 # The GAIA service does not always advertise cleanly over SDP, so probe the
 # channels it is commonly found on, most likely first.
@@ -141,6 +145,14 @@ class Momentum4:
                 raise SystemExit("m4ctl: connection closed by device")
             self.buf += chunk
 
+    def firmware(self):
+        """major.minor.patch, or None if the device will not report it."""
+        _, _, p, ok = self.exchange(CMD_GET_FIRMWARE)
+        if not ok or len(p) < 6:
+            return None
+        parts = [int.from_bytes(p[i:i + 2], "big") for i in (0, 2, 4)]
+        return ".".join(str(x) for x in parts)
+
     def state(self):
         """Unsupported features report None, never a value from an error reply."""
         _, _, anc, anc_ok = self.exchange(CMD_GET_ANC_STATUS)
@@ -150,6 +162,7 @@ class Momentum4:
             "anc": bool(anc[0]) if (anc_ok and anc) else None,
             "transparency": int(tr[0]) if (tr_ok and tr) else None,
             "bass_boost": bool(bb[0]) if (bb_ok and bb) else None,
+            "firmware": self.firmware(),
             "channel": self.channel,
         }
 
@@ -253,6 +266,8 @@ def main():
                 bb = st["bass_boost"]
                 print(f"Bass boost:   {'unsupported' if bb is None else ('on' if bb else 'off')}")
                 print(f"Battery:      {st['battery']}%" if st['battery'] is not None else "Battery:      unknown")
+                if st.get("firmware"):
+                    print(f"Firmware:     {st['firmware']}")
         elif args.cmd == "anc":
             dev.set_anc(args.value == "on")
         elif args.cmd == "bass":
