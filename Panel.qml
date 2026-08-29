@@ -51,6 +51,7 @@ Panel {
   property var comfortCall: null
   property var smartPause: null
   property var onHead: null
+  property var autoOff: null          // seconds, 0 = never; null = unsupported
   property string codec: ""           // what PipeWire negotiated (pactl)
   property int sampleRate: 0
   // "aptX HD · 44.1 kHz" — read from PipeWire, not the headphones, because
@@ -155,6 +156,11 @@ Panel {
     apply([cmd, on ? "on" : "off"])
   }
 
+  function setAutoOff(choice) {
+    if (root.autoOff === null) return
+    apply(["auto-off", choice])
+  }
+
   function setControls(on) {
     if (root.controls === null) return
     apply(["controls", on ? "on" : "off"])
@@ -198,6 +204,7 @@ Panel {
           root.comfortCall = (typeof d.comfort_call === "boolean") ? d.comfort_call : null
           root.smartPause  = (typeof d.smart_pause  === "boolean") ? d.smart_pause  : null
           root.onHead      = (typeof d.on_head      === "boolean") ? d.on_head      : null
+          root.autoOff     = (typeof d.auto_off     === "number")  ? d.auto_off     : null
         } catch (e) {
           root.percentage = -1
           root.devicePresent = false
@@ -851,6 +858,45 @@ Panel {
               foreground: root.barForeground
               tooltipText: "Gives phone calls a more natural sound stage"
               onClicked: root.setFeature("comfort-call", root.comfortCall, true)
+            }
+          }
+        }
+
+        // Smart Control's Auto Power Off: Never / 15 / 30 / 60 min.
+        Item {
+          width: parent.width
+          height: autoOffRow.height
+          visible: root.autoOff !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Auto Power Off"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: autoOffRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Repeater {
+              model: [
+                { label: "Never", choice: "never", secs: 0 },
+                { label: "15",    choice: "15",    secs: 900 },
+                { label: "30",    choice: "30",    secs: 1800 },
+                { label: "60",    choice: "60",    secs: 3600 }
+              ]
+              Button {
+                required property var modelData
+                text: modelData.label
+                bordered: true
+                selected: root.autoOff === modelData.secs
+                foreground: root.barForeground
+                tooltipText: "Sets the time after which your device turns itself off to save power (minutes)"
+                onClicked: root.setAutoOff(modelData.choice)
+              }
             }
           }
         }

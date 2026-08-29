@@ -49,7 +49,7 @@ reply is `command | 0x0100`.
 
 | Get | Set | Payload | Meaning |
 |---|---|---|---|
-| `0x0603` | — | byte, percent | **Battery.** Makes `org.bluez.Battery1` — and BlueZ's `Experimental` flag — unnecessary |
+| `0x0603` | — | byte, percent | **Battery.** Makes `org.bluez.Battery1` unnecessary (which, it turned out, this BlueZ populates from HFP without the `Experimental` flag anyway) |
 | `0x0401` | `0x0400` | byte bool | On-head Detection — also gates Smart Pause and call hold |
 | `0x080b` | `0x080a` | byte bool | Auto-Answer Calls |
 | `0x080d` | `0x080c` | byte bool | Smart Pause (pause on take-off) |
@@ -71,8 +71,21 @@ The actual Hi-Res setting (aptX Adaptive, 24 bit/96 kHz) was **not found**. It
 is also inert on Linux: WirePlumber offers SBC/AAC/aptX/aptX HD only, so the
 link negotiates aptX HD at 44.1 or 48 kHz whatever the headphones are set to.
 
-**Not found: Auto Power Off** (Never / 15 / 30 / 60 min) and **Tone & voice
-prompts** (voice / tone only / off, plus a language). Changing them moved no
+### Auto Power Off and events (`0x06xx`, `0x08xx`, `0x04xx`)
+
+| Command | Payload | Meaning |
+|---|---|---|
+| `0x0601` get | `00` → `00 <sec:u16>` | **Auto Power Off** in seconds; `0` = Never. An *empty* get is rejected with `0x05` — the index byte is why no sweep ever found it. Read as 3600/1800 as the app was stepped through 60/30 |
+| `0x0600` set | `00 <sec:u16>` | Setter; accepted with the current value |
+| `0x0682` push | byte | **Charging**: `01` when the cable goes in, `00` when it comes out — from the headphones, so a wall charger counts. No getter found (`0x0601 [01..10]`, `0x0605`, `0x0603 [n]` all miss), so it can only be observed, not polled |
+| `0x0880` push | byte | Audio link state: `0b` active, `ff` idle |
+| `0x089a` push | u32 | Active stream sample rate: `0xac44` 44100 (A2DP), `0xbb80` 48000, `0x3e80` 16000 (HFP voice), `0` stopped |
+| `0x0482` push | byte | On-head sensor event (`02`, `03` seen while the headphones were handled) |
+
+Battery over GAIA (`0x0603`) keeps answering while charging — only BlueZ's
+`Battery1` went blank on the cable.
+
+**Not found: Tone & voice prompts** (voice / tone only / off, plus a language). Changing them moved no
 odd ID in `0x0827–0x1fff` or `0x2001–0x27ff`, and nothing in the response-form
 mirrors `0x09xx`/`0x15xx` (which simply repeat `0x08xx`/`0x14xx`). Watching
 `0x1401–0x141f` and `0x0807`/`0x0813` live while they were stepped through

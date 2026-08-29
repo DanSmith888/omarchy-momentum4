@@ -69,10 +69,11 @@ headphones will tell us about:
 - **Bass boost**
 - **Touch controls** — enable or disable the on-cup controls
 - **Device settings** — On-head Detection, Smart Pause, Auto-Answer Calls,
-  Comfort Calls (the app's Device Settings pane)
-- **Not covered**: Auto Power Off, Tone & voice prompts and the Hi-Res audio
-  mode — their commands weren't found; see [PROTOCOL.md](PROTOCOL.md). Hi-Res
-  is moot on Linux anyway: the link is aptX HD regardless
+  Comfort Calls and Auto Power Off (the app's Device Settings pane)
+- **Not covered**: Tone & voice prompts and the Hi-Res audio mode — their
+  commands weren't found; see [PROTOCOL.md](PROTOCOL.md). Hi-Res is moot on
+  Linux anyway: the link is aptX HD regardless. Charging state is announced
+  by the headphones but can't be asked for, so a polling widget can't show it
 
 Everything is read back from the headphones, so the panel always shows their
 real state — change something in Smart Control and it follows.
@@ -103,31 +104,29 @@ m4ctl auto-answer on|off
 m4ctl comfort-call on|off
 m4ctl smart-pause on|off
 m4ctl on-head on|off
+m4ctl auto-off never|15|30|60   # minutes idle before they switch off
 m4ctl doctor
 ```
 
 ## Good to know
 
-**Battery disappears whenever the USB-C cable is attached.** The headphones
-stop reporting it over Bluetooth while charging, from any power source. That's
-their behaviour, not a fault.
+**Charging isn't shown.** The headphones announce cable in/out over GAIA but
+offer no way to ask, and this widget polls rather than listens — so battery
+keeps reading normally while charging and nothing says so.
 
-**The "USB-C connected" label only appears when the cable goes to this PC.**
-There is no charge-state command that we know of. What we can detect is that the headphones have enumerated as a **USB audio
+**The "USB-C connected" label only appears when the cable goes to this PC
+*and* the headphones enumerate as a USB audio device**, which they don't
+always. What we can detect is that the headphones have enumerated as a **USB audio
 card** on this host: plugged into a computer they present a sound device, and
 `m4status` matches the first word of their Bluetooth name against
 `/proc/asound/cards`.
 
 So the label is really "plugged into this machine", not "charging":
 
-| Cable goes to | Battery over Bluetooth | Panel shows |
-|---|---|---|
-| This PC | gone | "USB-C connected" |
-| A wall charger, or another machine | gone | nothing — battery is simply blank |
-
-A plain charger moves no data, enumerates no audio card, and is invisible to
-us. And being plugged into the PC doesn't prove charging is happening either —
-only that the cable is in.
+| Cable goes to | Panel shows |
+|---|---|
+| This PC, enumerated as USB audio | "USB-C connected" |
+| A wall charger, or another machine | nothing |
 
 **EQ presets live in this repo, not the headphones.** The headphones only store
 the active curve; Smart Control pushes preset values band by band, and so do we.

@@ -216,6 +216,14 @@ CMD_GET_CONTROLS = 0x1607
 # BlueZ's experimental org.bluez.Battery1 — no root anywhere.
 CMD_GET_BATTERY = 0x0603
 
+# Auto Power Off, in the 0x06xx power group. The get needs an index byte
+# (0x00) — an empty get is rejected with 0x05, which is why no sweep ever
+# found it — and answers <index><seconds:u16>. 0 = Never. Smart Control
+# offers Never / 15 / 30 / 60 min.
+CMD_SET_AUTO_OFF = 0x0600
+CMD_GET_AUTO_OFF = 0x0601
+AUTO_OFF_CHOICES = {"never": 0, "15": 900, "30": 1800, "60": 3600}
+
 # Plain one-byte booleans (1 = on, not inverted like the touch controls).
 # IDs from gjabell/momentumctl, MIT; verified on firmware 3.38.3 by
 # probes/decode/momentumctl-verify.json. They sit in the 0x04xx-0x08xx groups
@@ -494,6 +502,17 @@ class Momentum4:
         _, _, p, ok = self.exchange(CMD_GET_BATTERY)
         return int(p[0]) if (ok and p) else None
 
+    def auto_off(self):
+        """Auto Power Off in seconds (0 = never), or None if unsupported."""
+        _, _, p, ok = self.exchange(CMD_GET_AUTO_OFF, b"\x00")
+        return int.from_bytes(p[1:3], "big") if (ok and len(p) >= 3) else None
+
+    def set_auto_off(self, seconds):
+        payload = b"\x00" + int(seconds).to_bytes(2, "big")
+        _, _, _, ok = self.exchange(CMD_SET_AUTO_OFF, payload)
+        if not ok:
+            raise SystemExit("m4ctl: device rejected auto-off")
+
     def get_bool(self, name):
         """True/False for a BOOL_FEATURES entry, None if unsupported."""
         _, _, p, ok = self.exchange(BOOL_FEATURES[name][0])
@@ -519,6 +538,7 @@ class Momentum4:
             "sound_mode": self.sound_mode(),
             "eq": self.eq(),
             "battery": self.battery(),
+            "auto_off": self.auto_off(),
             **{name: self.get_bool(name) for name in BOOL_FEATURES},
             "firmware": self.firmware(),
             "channel": self.channel,
@@ -595,6 +615,9 @@ def main():
     for name in BOOL_FEATURES:
         p = sub.add_parser(name.replace("_", "-"), parents=[common])
         p.add_argument("value", choices=["on", "off"])
+    p = sub.add_parser("auto-off", parents=[common])
+    p.add_argument("value", choices=sorted(AUTO_OFF_CHOICES, key=lambda k: AUTO_OFF_CHOICES[k]),
+                   help="minutes until the headphones switch off when idle")
     p = sub.add_parser("sound-mode", parents=[common])
     p.add_argument("value", choices=["eq", "speech"])
     p = sub.add_parser("mode", parents=[common])
@@ -683,6 +706,8 @@ def main():
                 ct = st.get("controls")
                 print(f"Controls:     {'unsupported' if ct is None else ('on' if ct else 'off')}")
                 print(f"Sound mode:   {st.get('sound_mode') or 'unknown'}")
+                ao = st.get("auto_off")
+                print("Auto off:     " + ("unknown" if ao is None else ("never" if ao == 0 else f"{ao // 60} min")))
                 for name in BOOL_FEATURES:
                     v = st.get(name)
                     label = (name.replace("_", " ").capitalize() + ":").ljust(14)
@@ -700,6 +725,8 @@ def main():
             dev.set_sound_mode(args.value)
         elif args.cmd == "controls":
             dev.set_controls(args.value == "on")
+        elif args.cmd == "auto-off":
+            dev.set_auto_off(AUTO_OFF_CHOICES[args.value])
         elif args.cmd.replace("-", "_") in BOOL_FEATURES:
             dev.set_bool(args.cmd.replace("-", "_"), args.value == "on")
         elif args.cmd == "mode":
