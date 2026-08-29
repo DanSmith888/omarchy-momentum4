@@ -415,89 +415,6 @@ Panel {
           anchors.left: parent.left
           anchors.right: parent.right
           foreground: root.barForeground
-          visible: root.autoAnswer !== null || root.comfortCall !== null
-        }
-
-        PanelSectionHeader {
-          text: "PHONE CALLS"
-          foreground: root.barForeground
-          visible: root.autoAnswer !== null || root.comfortCall !== null
-        }
-
-        Item {
-          width: parent.width
-          height: autoAnswerRow.height
-          visible: root.autoAnswer !== null
-
-          Text {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "Auto-answer"
-            color: root.barForeground
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-          }
-          Row {
-            id: autoAnswerRow
-            anchors.right: parent.right
-            spacing: Style.spacing.sm
-
-            Button {
-              text: "Off"
-              bordered: true
-              selected: root.autoAnswer === false
-              foreground: root.barForeground
-              onClicked: root.setFeature("auto-answer", root.autoAnswer, false)
-            }
-            Button {
-              text: "On"
-              bordered: true
-              selected: root.autoAnswer === true
-              foreground: root.barForeground
-              onClicked: root.setFeature("auto-answer", root.autoAnswer, true)
-            }
-          }
-        }
-
-        Item {
-          width: parent.width
-          height: comfortCallRow.height
-          visible: root.comfortCall !== null
-
-          Text {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "Comfort Call"
-            color: root.barForeground
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-          }
-          Row {
-            id: comfortCallRow
-            anchors.right: parent.right
-            spacing: Style.spacing.sm
-
-            Button {
-              text: "Off"
-              bordered: true
-              selected: root.comfortCall === false
-              foreground: root.barForeground
-              onClicked: root.setFeature("comfort-call", root.comfortCall, false)
-            }
-            Button {
-              text: "On"
-              bordered: true
-              selected: root.comfortCall === true
-              foreground: root.barForeground
-              onClicked: root.setFeature("comfort-call", root.comfortCall, true)
-            }
-          }
-        }
-
-        PanelSeparator {
-          anchors.left: parent.left
-          anchors.right: parent.right
-          foreground: root.barForeground
           visible: root.bassBoost !== null
         }
 
@@ -721,6 +638,7 @@ Panel {
               bordered: true
               selected: root.controls === false
               foreground: root.barForeground
+              tooltipText: "Enable or disable the touch controls on the ear cup"
               onClicked: root.setControls(false)
             }
             Button {
@@ -728,7 +646,60 @@ Panel {
               bordered: true
               selected: root.controls === true
               foreground: root.barForeground
+              tooltipText: "Enable or disable the touch controls on the ear cup"
               onClicked: root.setControls(true)
+            }
+          }
+        }
+
+        PanelSeparator {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          foreground: root.barForeground
+          visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null
+        }
+
+        // Smart Control's Device Settings pane, in its order. Descriptions are
+        // the app's own, as tooltips.
+        PanelSectionHeader {
+          text: "DEVICE SETTINGS"
+          foreground: root.barForeground
+          visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null
+        }
+
+        Item {
+          width: parent.width
+          height: onHeadRow.height
+          visible: root.onHead !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "On-head Detection"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: onHeadRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.onHead === false
+              foreground: root.barForeground
+              tooltipText: "Enable smart pause, hold calls automatically, power saving mode"
+              onClicked: root.setFeature("on-head", root.onHead, false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.onHead === true
+              foreground: root.barForeground
+              tooltipText: "Enable smart pause, hold calls automatically, power saving mode"
+              onClicked: root.setFeature("on-head", root.onHead, true)
             }
           }
         }
@@ -756,6 +727,7 @@ Panel {
               bordered: true
               selected: root.smartPause === false
               foreground: root.barForeground
+              tooltipText: "Pause music by taking headphones off. Continue when putting back on."
               onClicked: root.setFeature("smart-pause", root.smartPause, false)
             }
             Button {
@@ -763,6 +735,7 @@ Panel {
               bordered: true
               selected: root.smartPause === true
               foreground: root.barForeground
+              tooltipText: "Pause music by taking headphones off. Continue when putting back on."
               onClicked: root.setFeature("smart-pause", root.smartPause, true)
             }
           }
@@ -770,35 +743,74 @@ Panel {
 
         Item {
           width: parent.width
-          height: onHeadRow.height
-          visible: root.onHead !== null
+          height: autoAnswerRow.height
+          visible: root.autoAnswer !== null
 
           Text {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: "On-head detection"
+            text: "Auto-Answer Calls"
             color: root.barForeground
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
           Row {
-            id: onHeadRow
+            id: autoAnswerRow
             anchors.right: parent.right
             spacing: Style.spacing.sm
 
             Button {
               text: "Off"
               bordered: true
-              selected: root.onHead === false
+              selected: root.autoAnswer === false
               foreground: root.barForeground
-              onClicked: root.setFeature("on-head", root.onHead, false)
+              tooltipText: "Answers calls when you put headphones on."
+              onClicked: root.setFeature("auto-answer", root.autoAnswer, false)
             }
             Button {
               text: "On"
               bordered: true
-              selected: root.onHead === true
+              selected: root.autoAnswer === true
               foreground: root.barForeground
-              onClicked: root.setFeature("on-head", root.onHead, true)
+              tooltipText: "Answers calls when you put headphones on."
+              onClicked: root.setFeature("auto-answer", root.autoAnswer, true)
+            }
+          }
+        }
+
+        Item {
+          width: parent.width
+          height: comfortCallRow.height
+          visible: root.comfortCall !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Comfort Calls"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: comfortCallRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.comfortCall === false
+              foreground: root.barForeground
+              tooltipText: "Gives phone calls a more natural sound stage"
+              onClicked: root.setFeature("comfort-call", root.comfortCall, false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.comfortCall === true
+              foreground: root.barForeground
+              tooltipText: "Gives phone calls a more natural sound stage"
+              onClicked: root.setFeature("comfort-call", root.comfortCall, true)
             }
           }
         }
