@@ -5,9 +5,8 @@ Speaks Qualcomm's GAIA protocol over Bluetooth RFCOMM. Standard library only:
 no Qt, no daemon, no background process. Each invocation opens a socket, does
 its business and closes.
 
-Battery is NOT read over GAIA — it comes from BlueZ's org.bluez.Battery1,
-which the Momentum 4 populates natively over HFP. That requires
-`Experimental = true` in /etc/bluetooth/main.conf.
+Battery is read over GAIA too (0x0603), so nothing here needs BlueZ's
+experimental interfaces or root.
 
 Protocol constants and the RFCOMM channel-probing approach are derived from
 momentum4-control by f3Y0 (https://github.com/f3Y0/momentum4-control), MIT

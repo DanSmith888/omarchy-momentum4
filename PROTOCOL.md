@@ -36,6 +36,28 @@ for an index out of range.
 | Command | Payload | Meaning |
 |---|---|---|
 | `0x1a05` | byte | ANC on/off — the "Off" leg of Smart Control's three-way mode |
+
+### Battery and phone-call features (`0x04xx`–`0x08xx`)
+
+IDs from [momentumctl](https://github.com/gjabell/momentumctl) (MIT), verified
+here on firmware 3.38.3 — `probes/decode/momentumctl-verify.json` has each get,
+and a set → readback → restore for every boolean. Same framing as everything
+else: get takes no payload, set takes one byte, the reply is `command | 0x0100`.
+
+| Get | Set | Payload | Meaning |
+|---|---|---|---|
+| `0x0603` | — | byte, percent | **Battery.** Makes `org.bluez.Battery1` — and BlueZ's `Experimental` flag — unnecessary |
+| `0x0401` | `0x0400` | byte bool | On-head detection |
+| `0x080b` | `0x080a` | byte bool | Auto-answer calls |
+| `0x080d` | `0x080c` | byte bool | Smart Pause (Smart Control's "auto-pause") |
+| `0x0815` | `0x0814` | byte bool | Comfort Call (sidetone on calls) |
+
+These are *not* inverted, unlike the touch controls at `0x1607`.
+
+Why our sweeps missed them: they live in the range that `0x0607` sits in the
+middle of, and both sweeps of it took the headphones offline before reaching
+the `0x08xx` group. Reading someone else's working implementation beat
+sweeping, the same way listening did for EQ.
 | `0x1a03` | byte | Noise level, 0 = full ANC … 100 = full transparency |
 | `0x1a01` | 6 bytes | Table of `(id, value)` pairs: `01 vv │ 02 vv │ 03 vv` |
 | `0x1a00` | 6 bytes | **Writes** the whole `0x1a01` table |

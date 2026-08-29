@@ -11,9 +11,8 @@ import qs.Ui
 // Ui/Panel for the open/close controller and keyboard handling; IPC is left
 // to the bar widget so the target is registered once.
 //
-// Battery comes from BlueZ org.bluez.Battery1, which requires
-// `Experimental = true` in /etc/bluetooth/main.conf. Everything else speaks
-// GAIA over RFCOMM via bin/m4ctl.
+// Everything, battery included, speaks GAIA over RFCOMM via bin/m4ctl. No
+// BlueZ extras and no root are involved.
 //
 // State is polled rather than subscribed: reading the device means opening
 // an RFCOMM socket, and holding that open would lock out other clients.

@@ -19,9 +19,7 @@ _No response_
 
 ### Maintainer notes
 
-Self-contained: stdlib Python only, no external binaries, no network access. Talks to BlueZ over D-Bus and to the headphones over an RFCOMM socket, as the user.
-
-The plugin never runs sudo. Battery needs `Experimental = true` in /etc/bluetooth/main.conf, which the README asks the user to set themselves as a one-time manual step — that is the only privileged mention and the reason the baseline reports the `privilege` capability.
+Self-contained: stdlib Python only, no external binaries, no network access, no root. Asks `bluetoothctl` which device is connected and talks to the headphones over an RFCOMM socket, as the user.
 
 `tools/` is the reverse-engineering kit behind PROTOCOL.md; the widget never executes it.
 

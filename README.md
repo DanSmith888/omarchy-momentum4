@@ -8,30 +8,19 @@ Control your **Sennheiser Momentum 4** headphones from the [Omarchy](https://oma
 
 This is built for one set of headphones. It speaks the Momentum 4's own
 protocol, so it will not work with anything else. It is self-contained —
-plain Python from the standard library, no extra packages or binaries.
+plain Python from the standard library, no extra packages, no binaries, and
+nothing that needs root.
 
 ## Install
 
-### 1. Enable BlueZ experimental interfaces (one-time, manual)
+No setup, no root. Pair the headphones over Bluetooth, then:
 
-Battery comes from `org.bluez.Battery1`, which BlueZ only exposes when this is
-on. **Without it the widget has nothing to show and stays hidden.**
-
-This is the one step that needs root, and it is yours to run — **the plugin
-never runs `sudo`** and never touches `/etc` itself:
-
-```bash
-sudo sed -i 's/^#Experimental = false/Experimental = true/' /etc/bluetooth/main.conf
-sudo systemctl restart bluetooth
-```
-
-### 2. Add the plugin
 
 ```bash
 omarchy plugin add https://github.com/DanSmith888/omarchy-momentum4.git --enable
 ```
 
-### 3. Check it
+### Check it
 
 ```bash
 ~/.config/omarchy/plugins/dansmith888.momentum4/bin/m4ctl doctor
@@ -43,7 +32,7 @@ whatever is broken. Put `bin/` on your `PATH` if you want `m4ctl` as a command.
 ## Update
 
 ```bash
-omarchy plugin update dansmith888.momentum4
+omarchy plugin update dansmith888.momentum4 && omarchy restart shell
 ```
 
 ## Remove
@@ -52,13 +41,8 @@ omarchy plugin update dansmith888.momentum4
 omarchy plugin remove dansmith888.momentum4
 ```
 
-That removes everything the plugin installed. The BlueZ `Experimental` flag
-from step 1 is left as you set it; to undo it:
-
-```bash
-sudo sed -i 's/^Experimental = true/#Experimental = false/' /etc/bluetooth/main.conf
-sudo systemctl restart bluetooth
-```
+That removes everything. The plugin never touched anything outside its own
+folder and a lock file in `$XDG_RUNTIME_DIR`.
 
 ## Using it
 
@@ -82,7 +66,8 @@ headphones will tell us about:
 - **Sound mode** — Graphic EQ or Speech Clarity
 - **Five-band EQ** — Smart Control's eight presets, or drag any band yourself
 - **Bass boost**
-- **Touch controls** — enable or disable the on-cup controls
+- **Phone calls** — Auto-answer and Comfort Call
+- **Touch controls** — on-cup controls, Smart Pause, on-head detection
 
 Everything is read back from the headphones, so the panel always shows their
 real state — change something in Smart Control and it follows.
@@ -92,7 +77,6 @@ real state — change something in Smart Control and it follows.
 - Omarchy with `omarchy-shell`
 - A Sennheiser Momentum 4, paired over Bluetooth
 - Python 3 (standard library only)
-- BlueZ with `Experimental = true` (step 1 above)
 
 ## Command line
 
@@ -110,6 +94,10 @@ m4ctl eq                     # show the curve
 m4ctl eq-set 2 -1.5          # band 0-4, gain in dB
 m4ctl bass on|off
 m4ctl controls on|off        # on-cup touch controls
+m4ctl auto-answer on|off
+m4ctl comfort-call on|off
+m4ctl smart-pause on|off
+m4ctl on-head on|off
 m4ctl doctor
 ```
 
@@ -120,9 +108,7 @@ stop reporting it over Bluetooth while charging, from any power source. That's
 their behaviour, not a fault.
 
 **The "USB-C connected" label only appears when the cable goes to this PC.**
-There is no charge-state command to ask, and BlueZ can't help — `Battery1`
-exposes a percentage and nothing else, so UPower reports state 0, *unknown*.
-What we can detect is that the headphones have enumerated as a **USB audio
+There is no charge-state command that we know of. What we can detect is that the headphones have enumerated as a **USB audio
 card** on this host: plugged into a computer they present a sound device, and
 `m4status` matches the first word of their Bluetooth name against
 `/proc/asound/cards`.
@@ -158,20 +144,21 @@ to match it; the hardware's real centre frequencies are
 Plugins run unsandboxed inside the Omarchy shell with your user's permissions,
 so here is exactly what this one does:
 
-- `bin/m4status` and `bin/m4ctl` are run by the widget as your user. They talk
-  to BlueZ over D-Bus (`busctl`, `bluetoothctl`) and to the headphones over an
+- `bin/m4status` and `bin/m4ctl` are run by the widget as your user. They ask
+  `bluetoothctl` which device is connected and talk to the headphones over an
   RFCOMM socket. Nothing else.
-- No network access, no downloads, no background services, no writes outside
-  `$XDG_RUNTIME_DIR` (a lock file).
+- No root, ever. No network access, no downloads, no background services, no
+  writes outside `$XDG_RUNTIME_DIR` (a lock file).
 - `tools/` is the reverse-engineering kit used to write [PROTOCOL.md](PROTOCOL.md).
   The widget never runs it. `tools/gaia-probe` sends arbitrary commands to the
   headphones — read its `--help` before pointing it at them.
 
 ## Related
 
-[momentumctl](https://github.com/timmo001/omarchy-momentumctl) is another
-Omarchy panel for Sennheiser headsets, built on the external
-[`momentumctl`](https://github.com/gjabell/momentumctl) CLI.
+[omarchy-momentumctl](https://github.com/timmo001/omarchy-momentumctl) is
+another Omarchy panel for Sennheiser headsets, built on the external
+[`momentumctl`](https://github.com/gjabell/momentumctl) CLI — whose source is
+where the battery and phone-call command IDs used here came from.
 
 ## Protocol
 
@@ -184,7 +171,9 @@ platform.
 
 Protocol constants and the RFCOMM channel-probing approach are derived from
 [momentum4-control](https://github.com/f3Y0/momentum4-control) by f3Y0, MIT
-licensed.
+licensed. The battery, on-head, auto-answer, Smart Pause and Comfort Call
+command IDs come from [momentumctl](https://github.com/gjabell/momentumctl)
+by gjabell, MIT licensed.
 
 ## Licence
 
