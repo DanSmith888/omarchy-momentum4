@@ -66,8 +66,9 @@ headphones will tell us about:
 - **Sound mode** — Graphic EQ or Speech Clarity
 - **Five-band EQ** — Smart Control's eight presets, or drag any band yourself
 - **Bass boost**
-- **Phone calls** — Auto-answer and Comfort Call
-- **Touch controls** — on-cup controls, Smart Pause, on-head detection
+- **Touch controls** — enable or disable the on-cup controls
+- **Device settings** — On-head Detection, Smart Pause, Auto-Answer Calls,
+  Comfort Calls (the app's Device Settings pane)
 
 Everything is read back from the headphones, so the panel always shows their
 real state — change something in Smart Control and it follows.

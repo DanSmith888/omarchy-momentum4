@@ -40,19 +40,31 @@ for an index out of range.
 ### Battery and phone-call features (`0x04xx`–`0x08xx`)
 
 IDs from [momentumctl](https://github.com/gjabell/momentumctl) (MIT), verified
-here on firmware 3.38.3 — `probes/decode/momentumctl-verify.json` has each get,
-and a set → readback → restore for every boolean. Same framing as everything
-else: get takes no payload, set takes one byte, the reply is `command | 0x0100`.
+here on firmware 3.38.3 two ways: `probes/decode/momentumctl-verify.json` has
+each get plus a set → readback → restore for every boolean, and each ID was
+then watched with `tools/gaia-watch` while the matching switch was flipped in
+Smart Control's **Device Settings** pane — every one moved in step. Same
+framing as everything else: get takes no payload, set takes one byte, the
+reply is `command | 0x0100`.
 
 | Get | Set | Payload | Meaning |
 |---|---|---|---|
 | `0x0603` | — | byte, percent | **Battery.** Makes `org.bluez.Battery1` — and BlueZ's `Experimental` flag — unnecessary |
-| `0x0401` | `0x0400` | byte bool | On-head detection |
-| `0x080b` | `0x080a` | byte bool | Auto-answer calls |
-| `0x080d` | `0x080c` | byte bool | Smart Pause (Smart Control's "auto-pause") |
-| `0x0815` | `0x0814` | byte bool | Comfort Call (sidetone on calls) |
+| `0x0401` | `0x0400` | byte bool | On-head Detection — also gates Smart Pause and call hold |
+| `0x080b` | `0x080a` | byte bool | Auto-Answer Calls |
+| `0x080d` | `0x080c` | byte bool | Smart Pause (pause on take-off) |
+| `0x0815` | `0x0814` | byte bool | Comfort Calls ("more natural sound stage" on calls) |
 
-These are *not* inverted, unlike the touch controls at `0x1607`.
+These are *not* inverted, unlike the touch controls at `0x1607`. The device
+sends **no notification** when the app changes them, which is why listening
+never found them — polling did.
+
+Still unknown from the same pane: **Auto Power Off** (a duration, 15 min by
+default) and **Tone & voice prompts** (Tone only / voice / off). Also seen
+nearby and unexplained: `0x0807 = 00`, `0x0813 = 00`, and `0x0819 =
+05 00 01 02 03 04` (a five-entry list). Polling the untested `0x0403–0x041f`
+and `0x0601`/`0x0605` getters reset the Bluetooth link once — treat that group
+with the same caution as `0x0607`.
 
 Why our sweeps missed them: they live in the range that `0x0607` sits in the
 middle of, and both sweeps of it took the headphones offline before reaching
