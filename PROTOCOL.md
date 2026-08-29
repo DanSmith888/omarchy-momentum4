@@ -59,13 +59,17 @@ These are *not* inverted, unlike the touch controls at `0x1607`. The device
 sends **no notification** when the app changes them, which is why listening
 never found them — polling did.
 
-### Audio mode priority (`0x14xx`)
+### Audio mode priority (`0x14xx`) — a restart flag, not the mode
 
-| Get | Set | Payload | Meaning |
-|---|---|---|---|
-| `0x1407` | `0x1406`? | byte bool | **Hi-Res 24 bit/96 kHz** — the only byte in `0x0827–0x1fff` that changed between two full snapshots taken with it on and off. Takes effect after a restart of the headphones. A one-byte write to `0x1406` is rejected with `0x05` (malformed), so the setter's shape is still unknown |
-| `0x1409` | | byte, `02` seen | unknown three-state-looking neighbour — candidate for Tone & Voice Prompts |
-| `0x140b` | | 6 bytes, all zero | unknown |
+| Get | Payload | Meaning |
+|---|---|---|
+| `0x1407` | byte | **"Audio mode change pending"**, not Hi-Res itself. It was the only byte in `0x0827–0x1fff` that differed between snapshots with Hi-Res on and off — but it read `01` right after the switch was flipped and `00` once the headphones had restarted, *with Hi-Res still on*. A one-byte write to `0x1406` is rejected (`0x05`) |
+| `0x1409` | byte, `02` seen | unknown; did not move for Tone & voice prompts or Auto Power Off |
+| `0x140b` | 6 bytes, all zero | unknown |
+
+The actual Hi-Res setting (aptX Adaptive, 24 bit/96 kHz) was **not found**. It
+is also inert on Linux: WirePlumber offers SBC/AAC/aptX/aptX HD only, so the
+link negotiates aptX HD at 44.1 or 48 kHz whatever the headphones are set to.
 
 **Not found: Auto Power Off** (Never / 15 / 30 / 60 min) and **Tone & voice
 prompts** (voice / tone only / off, plus a language). Changing them moved no

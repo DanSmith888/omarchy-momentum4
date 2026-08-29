@@ -51,7 +51,6 @@ Panel {
   property var comfortCall: null
   property var smartPause: null
   property var onHead: null
-  property var hiRes: null            // read-only: no known setter
   property string codec: ""           // what PipeWire negotiated (pactl)
   property int sampleRate: 0
   // "aptX HD · 44.1 kHz" — read from PipeWire, not the headphones, because
@@ -199,7 +198,6 @@ Panel {
           root.comfortCall = (typeof d.comfort_call === "boolean") ? d.comfort_call : null
           root.smartPause  = (typeof d.smart_pause  === "boolean") ? d.smart_pause  : null
           root.onHead      = (typeof d.on_head      === "boolean") ? d.on_head      : null
-          root.hiRes       = (typeof d.hi_res       === "boolean") ? d.hi_res       : null
         } catch (e) {
           root.percentage = -1
           root.devicePresent = false
@@ -855,16 +853,6 @@ Panel {
               onClicked: root.setFeature("comfort-call", root.comfortCall, true)
             }
           }
-        }
-
-        Text {
-          text: "Hi-Res 24 bit/96 kHz: " + (root.hiRes ? "on" : "off") + "  —  change in Smart Control, restart required"
-          visible: root.hiRes !== null
-          color: Qt.darker(root.barForeground, 1.4)
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          wrapMode: Text.WordWrap
-          width: parent.width
         }
 
         Text {

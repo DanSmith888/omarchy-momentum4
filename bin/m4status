@@ -142,7 +142,7 @@ def main():
                     state["antiwind"] = d.get("antiwind")
                     state["eq"] = d.get("eq")
                     state["sound_mode"] = d.get("sound_mode")
-                    for k in ("on_head", "auto_answer", "smart_pause", "comfort_call", "hi_res"):
+                    for k in ("on_head", "auto_answer", "smart_pause", "comfort_call"):
                         state[k] = d.get(k)
             except json.JSONDecodeError:
                 pass
