@@ -70,6 +70,35 @@ def usb_connected(name):
     return bool(key) and key in cards.upper()
 
 
+def stream_info(mac):
+    """(codec, sample_rate_hz) PipeWire negotiated for this device's A2DP sink.
+
+    Read from pactl, not the headphones: what actually plays is decided by the
+    PC side, and it is the thing the user can act on (a codec the OS lacks
+    cannot be negotiated whatever the headphones offer).
+    """
+    key = mac.replace(":", "_")
+    codec = rate = None
+    # Both live on the sink node (the card only lists the profiles on offer).
+    sinks = run(["pactl", "list", "sinks"], timeout=5) or ""
+    block = sinks.split("bluez_output." + key, 1)
+    if len(block) == 2:
+        for line in block[1].split("\nSink #", 1)[0].splitlines():
+            if "api.bluez5.codec" in line and codec is None:
+                codec = line.split("=", 1)[1].strip().strip('"')
+            elif "Sample Specification" in line and rate is None:
+                for tok in line.split():
+                    if tok.endswith("Hz"):
+                        try:
+                            rate = int(tok[:-2])
+                        except ValueError:
+                            pass
+    names = {"sbc": "SBC", "sbc_xq": "SBC-XQ", "aac": "AAC", "aptx": "aptX",
+             "aptx_hd": "aptX HD", "aptx_ll": "aptX LL", "ldac": "LDAC",
+             "lc3": "LC3", "opus_05": "Opus"}
+    return (names.get(codec, codec) if codec else None), rate
+
+
 def backend_for(name):
     for pattern, script in BACKENDS:
         if pattern.search(name or ""):
@@ -85,8 +114,10 @@ def main():
         print("{}")
         return
 
+    codec, rate = stream_info(mac)
     state = {"mac": mac, "name": name, "battery": None,
              "usb_connected": usb_connected(name),
+             "codec": codec, "sample_rate": rate,
              "anc_supported": False}
 
     backend = backend_for(name)

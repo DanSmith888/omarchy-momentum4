@@ -52,6 +52,13 @@ Panel {
   property var smartPause: null
   property var onHead: null
   property var hiRes: null            // read-only: no known setter
+  property string codec: ""           // what PipeWire negotiated (pactl)
+  property int sampleRate: 0
+  // "aptX HD · 44.1 kHz" — read from PipeWire, not the headphones, because
+  // the OS side decides the codec and it is what the user can act on.
+  readonly property string streamText: root.codec === "" ? ""
+      : root.codec + (root.sampleRate > 0
+          ? " · " + (root.sampleRate / 1000).toFixed(1).replace(/\.0$/, "") + " kHz" : "")
   property bool charging: false       // USB cable attached
   property bool devicePresent: false  // any supported headset connected
   property bool busy: false
@@ -174,6 +181,8 @@ Panel {
             return
           }
           root.stale = false
+          root.codec        = d.codec || ""
+          root.sampleRate   = (typeof d.sample_rate === "number") ? d.sample_rate : 0
           root.charging     = d.charging === true
           root.percentage   = (typeof d.battery === "number") ? d.battery : -1
           root.deviceName   = d.name || ""
@@ -294,9 +303,10 @@ Panel {
         }
 
         Text {
-          text: root.present ? "Battery " + root.percentage + "%" + (root.charging ? " — charging" : "")
+          text: (root.present ? "Battery " + root.percentage + "%" + (root.charging ? " — charging" : "")
               : root.charging ? "Charging — battery not reported over Bluetooth"
-              : "Battery unknown"
+              : "Battery unknown")
+              + (root.streamText !== "" ? "  ·  " + root.streamText : "")
           color: root.low ? Color.urgent : Qt.darker(root.barForeground, 1.3)
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
