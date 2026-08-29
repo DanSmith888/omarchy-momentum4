@@ -646,60 +646,7 @@ Panel {
           anchors.left: parent.left
           anchors.right: parent.right
           foreground: root.barForeground
-          visible: root.controls !== null
-        }
-
-        PanelSectionHeader {
-          text: "TOUCH CONTROLS"
-          foreground: root.barForeground
-          visible: root.controls !== null
-        }
-
-        // The on-cup touch/button controls. The device stores this inverted
-        // (0 = enabled), which m4ctl normalises, so this stays a plain
-        // enabled/disabled pair.
-        Item {
-          width: parent.width
-          height: controlsRow.height
-          visible: root.controls !== null
-
-          Text {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "Touch controls"
-            color: root.barForeground
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-          }
-          Row {
-            id: controlsRow
-            anchors.right: parent.right
-            spacing: Style.spacing.sm
-
-            Button {
-              text: "Off"
-              bordered: true
-              selected: root.controls === false
-              foreground: root.barForeground
-              tooltipText: "Enable or disable the touch controls on the ear cup"
-              onClicked: root.setControls(false)
-            }
-            Button {
-              text: "On"
-              bordered: true
-              selected: root.controls === true
-              foreground: root.barForeground
-              tooltipText: "Enable or disable the touch controls on the ear cup"
-              onClicked: root.setControls(true)
-            }
-          }
-        }
-
-        PanelSeparator {
-          anchors.left: parent.left
-          anchors.right: parent.right
-          foreground: root.barForeground
-          visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null
+          visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null || root.controls !== null
         }
 
         // Smart Control's Device Settings pane, in its order. Descriptions are
@@ -707,7 +654,7 @@ Panel {
         PanelSectionHeader {
           text: "DEVICE SETTINGS"
           foreground: root.barForeground
-          visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null
+          visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null || root.controls !== null
         }
         Item {
           width: parent.width
@@ -843,8 +790,13 @@ Panel {
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
+          Item {
+            width: parent.width
+            height: autoOffRow.height
+
           Row {
             id: autoOffRow
+            anchors.right: parent.right
             spacing: Style.spacing.sm
 
             Repeater {
@@ -864,6 +816,7 @@ Panel {
                 onClicked: root.setAutoOff(modelData.choice)
               }
             }
+          }
           }
         }
         Item {
@@ -899,6 +852,46 @@ Panel {
               foreground: root.barForeground
               tooltipText: "Gives phone calls a more natural sound stage"
               onClicked: root.setFeature("comfort-call", root.comfortCall, true)
+            }
+          }
+        }
+
+        // The on-cup touch/button controls. The device stores this inverted
+        // (0 = enabled), which m4ctl normalises, so this stays a plain
+        // enabled/disabled pair.
+        Item {
+          width: parent.width
+          height: controlsRow.height
+          visible: root.controls !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Touch controls"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: controlsRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.controls === false
+              foreground: root.barForeground
+              tooltipText: "Enable or disable the touch controls on the ear cup"
+              onClicked: root.setControls(false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.controls === true
+              foreground: root.barForeground
+              tooltipText: "Enable or disable the touch controls on the ear cup"
+              onClicked: root.setControls(true)
             }
           }
         }
