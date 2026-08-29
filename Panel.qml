@@ -47,6 +47,11 @@ Panel {
   property var eq: null               // 5 gains in dB
   property var presets: []            // from presets.json via m4ctl
   property string soundMode: ""       // "eq" | "speech"
+  // Plain on/off features; null = the firmware did not answer.
+  property var autoAnswer: null
+  property var comfortCall: null
+  property var smartPause: null
+  property var onHead: null
   property bool charging: false       // USB cable attached
   property bool devicePresent: false  // any supported headset connected
   property bool busy: false
@@ -138,6 +143,11 @@ Panel {
     return ""
   }
 
+  function setFeature(cmd, current, on) {
+    if (current === null) return
+    apply([cmd, on ? "on" : "off"])
+  }
+
   function setControls(on) {
     if (root.controls === null) return
     apply(["controls", on ? "on" : "off"])
@@ -165,6 +175,10 @@ Panel {
           root.antiwind = d.antiwind || ""
           root.eq = (Array.isArray(d.eq) && d.eq.length) ? d.eq : null
           root.soundMode = d.sound_mode || ""
+          root.autoAnswer  = (typeof d.auto_answer  === "boolean") ? d.auto_answer  : null
+          root.comfortCall = (typeof d.comfort_call === "boolean") ? d.comfort_call : null
+          root.smartPause  = (typeof d.smart_pause  === "boolean") ? d.smart_pause  : null
+          root.onHead      = (typeof d.on_head      === "boolean") ? d.on_head      : null
         } catch (e) {
           root.percentage = -1
           root.devicePresent = false
@@ -225,7 +239,7 @@ Panel {
     // panelColumn.implicitHeight excludes its own anchors.margins, so passing
     // it raw made the panel two paddings too short and clipped the last row.
     contentHeight: panel.fittedContentHeight(
-      panelColumn.implicitHeight + Style.spacing.panelPadding * 2, Style.space(720))
+      panelColumn.implicitHeight + Style.spacing.panelPadding * 2, Style.space(900))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -394,6 +408,89 @@ Panel {
               foreground: root.barForeground
               enabled: root.customMode
               onClicked: root.setAntiwind("max")
+            }
+          }
+        }
+
+        PanelSeparator {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          foreground: root.barForeground
+          visible: root.autoAnswer !== null || root.comfortCall !== null
+        }
+
+        PanelSectionHeader {
+          text: "PHONE CALLS"
+          foreground: root.barForeground
+          visible: root.autoAnswer !== null || root.comfortCall !== null
+        }
+
+        Item {
+          width: parent.width
+          height: autoAnswerRow.height
+          visible: root.autoAnswer !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Auto-answer"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: autoAnswerRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.autoAnswer === false
+              foreground: root.barForeground
+              onClicked: root.setFeature("auto-answer", root.autoAnswer, false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.autoAnswer === true
+              foreground: root.barForeground
+              onClicked: root.setFeature("auto-answer", root.autoAnswer, true)
+            }
+          }
+        }
+
+        Item {
+          width: parent.width
+          height: comfortCallRow.height
+          visible: root.comfortCall !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Comfort Call"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: comfortCallRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.comfortCall === false
+              foreground: root.barForeground
+              onClicked: root.setFeature("comfort-call", root.comfortCall, false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.comfortCall === true
+              foreground: root.barForeground
+              onClicked: root.setFeature("comfort-call", root.comfortCall, true)
             }
           }
         }
@@ -602,23 +699,108 @@ Panel {
         // The on-cup touch/button controls. The device stores this inverted
         // (0 = enabled), which m4ctl normalises, so this stays a plain
         // enabled/disabled pair.
-        Row {
-          spacing: Style.spacing.sm
+        Item {
+          width: parent.width
+          height: controlsRow.height
           visible: root.controls !== null
 
-          Button {
-            text: "Off"
-            bordered: true
-            selected: root.controls === false
-            foreground: root.barForeground
-            onClicked: root.setControls(false)
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Touch controls"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
           }
-          Button {
-            text: "On"
-            bordered: true
-            selected: root.controls === true
-            foreground: root.barForeground
-            onClicked: root.setControls(true)
+          Row {
+            id: controlsRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.controls === false
+              foreground: root.barForeground
+              onClicked: root.setControls(false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.controls === true
+              foreground: root.barForeground
+              onClicked: root.setControls(true)
+            }
+          }
+        }
+
+        Item {
+          width: parent.width
+          height: smartPauseRow.height
+          visible: root.smartPause !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Smart Pause"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: smartPauseRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.smartPause === false
+              foreground: root.barForeground
+              onClicked: root.setFeature("smart-pause", root.smartPause, false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.smartPause === true
+              foreground: root.barForeground
+              onClicked: root.setFeature("smart-pause", root.smartPause, true)
+            }
+          }
+        }
+
+        Item {
+          width: parent.width
+          height: onHeadRow.height
+          visible: root.onHead !== null
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "On-head detection"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: onHeadRow
+            anchors.right: parent.right
+            spacing: Style.spacing.sm
+
+            Button {
+              text: "Off"
+              bordered: true
+              selected: root.onHead === false
+              foreground: root.barForeground
+              onClicked: root.setFeature("on-head", root.onHead, false)
+            }
+            Button {
+              text: "On"
+              bordered: true
+              selected: root.onHead === true
+              foreground: root.barForeground
+              onClicked: root.setFeature("on-head", root.onHead, true)
+            }
           }
         }
 

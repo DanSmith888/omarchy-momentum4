@@ -1,0 +1,74 @@
+{
+ "mac": "XX:XX:XX:XX:XX:XX",
+ "purpose": "verify command IDs taken from gjabell/momentumctl",
+ "results": {
+  "battery": {
+   "get": "0x603",
+   "resp": "0x703",
+   "ok": true,
+   "payload": "64"
+  },
+  "on_head": {
+   "get": "0x401",
+   "resp": "0x501",
+   "ok": true,
+   "payload": "01",
+   "set": "0x400",
+   "set_resp": "0x500",
+   "set_ok": true,
+   "wrote": 0,
+   "readback": "00",
+   "readback_matches": true,
+   "restored": true,
+   "final": "01",
+   "final_matches_original": true
+  },
+  "auto_answer": {
+   "get": "0x80b",
+   "resp": "0x90b",
+   "ok": true,
+   "payload": "01",
+   "set": "0x80a",
+   "set_resp": "0x90a",
+   "set_ok": true,
+   "wrote": 0,
+   "readback": "00",
+   "readback_matches": true,
+   "restored": true,
+   "final": "01",
+   "final_matches_original": true
+  },
+  "smart_pause": {
+   "get": "0x80d",
+   "resp": "0x90d",
+   "ok": true,
+   "payload": "01",
+   "set": "0x80c",
+   "set_resp": "0x90c",
+   "set_ok": true,
+   "wrote": 0,
+   "readback": "00",
+   "readback_matches": true,
+   "restored": true,
+   "final": "01",
+   "final_matches_original": true
+  },
+  "comfort_call": {
+   "get": "0x815",
+   "resp": "0x915",
+   "ok": true,
+   "payload": "01",
+   "set": "0x814",
+   "set_resp": "0x914",
+   "set_ok": true,
+   "wrote": 0,
+   "readback": "00",
+   "readback_matches": true,
+   "restored": true,
+   "final": "01",
+   "final_matches_original": true
+  }
+ },
+ "firmware": "3.38.3",
+ "battery1_dbus": 100
+}

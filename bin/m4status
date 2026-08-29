@@ -4,13 +4,9 @@
     {"mac": "...", "name": "MOMENTUM 4", "battery": 90,
      "anc_supported": true, "anc": true, "transparency": 100}
 
-Battery comes from BlueZ's org.bluez.Battery1, which only exists when
-`Experimental = true` is set in /etc/bluetooth/main.conf.
-
-Everything else is Momentum 4 specific and comes from bin/m4ctl over GAIA.
-The BACKENDS table keys off the device name, so an unrecognised headset still
-reports battery rather than vanishing from the bar — but none of the controls
-will be available.
+Everything, battery included, comes from bin/m4ctl over GAIA. No BlueZ
+extras and no root are needed. The BACKENDS table keys off the device name so
+that only a Momentum 4 is ever spoken to.
 
 Exits 0 with an empty object when nothing is connected — the widget hides
 itself rather than showing a stale value.
@@ -25,9 +21,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 TIMEOUT = 10
 
-# Device name pattern -> backend script. Only the Momentum 4 is supported;
-# this is a table rather than a constant so an unknown device degrades to
-# battery-only instead of erroring.
+# Device name pattern -> backend script. Only the Momentum 4 is supported.
 BACKENDS = [
     (re.compile(r"MOMENTUM\s*4", re.I), "m4ctl"),
 ]
@@ -58,18 +52,6 @@ def connected_device():
     return None, None
 
 
-def battery(mac):
-    path = "/org/bluez/hci0/dev_" + mac.replace(":", "_")
-    out = run(["busctl", "--system", "get-property", "org.bluez", path,
-               "org.bluez.Battery1", "Percentage"], timeout=5)
-    if not out:
-        return None
-    try:
-        return int(out.split()[-1])
-    except (ValueError, IndexError):
-        return None
-
-
 def usb_connected(name):
     """True when the headphones are attached to THIS machine over USB.
 
@@ -77,8 +59,7 @@ def usb_connected(name):
     headphones have enumerated as a USB audio card on this host, which happens
     only when plugged into this PC. Charging from a wall adapter or another
     machine is invisible here, and being plugged in does not mean charging is
-    happening. Neither BlueZ nor UPower can tell us the real thing: Battery1
-    exposes only Percentage, so UPower reports state 0, unknown.
+    happening. The headphones have no charge-state command that we know of.
     """
     try:
         with open("/proc/asound/cards") as f:
@@ -104,16 +85,11 @@ def main():
         print("{}")
         return
 
-    # battery() is the generic path, used for any headset. When a device
-    # backend runs it reports battery too, from the same source, so the local
-    # read is the fallback rather than a second query.
     state = {"mac": mac, "name": name, "battery": None,
              "usb_connected": usb_connected(name),
              "anc_supported": False}
 
     backend = backend_for(name)
-    if not backend:
-        state["battery"] = battery(mac)
     if backend:
         out = run([backend, "get", "--json"])
         if out:
@@ -135,6 +111,8 @@ def main():
                     state["antiwind"] = d.get("antiwind")
                     state["eq"] = d.get("eq")
                     state["sound_mode"] = d.get("sound_mode")
+                    for k in ("on_head", "auto_answer", "smart_pause", "comfort_call"):
+                        state[k] = d.get(k)
             except json.JSONDecodeError:
                 pass
 
