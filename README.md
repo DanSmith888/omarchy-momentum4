@@ -108,6 +108,28 @@ m4ctl auto-off never|15|30|60   # minutes idle before they switch off
 m4ctl doctor
 ```
 
+## Hacking on it
+
+Clone the repo, then check and try changes without going through git:
+
+```bash
+omarchy plugin validate .
+
+# Qt 6 qmllint, with the shell's qs.* imports resolvable. /usr/bin/qmllint
+# is Qt 5 on Arch and exits silently; use the Qt 6 binary.
+mkdir -p "$XDG_RUNTIME_DIR/qsroot" && ln -sfn "$OMARCHY_PATH/shell" "$XDG_RUNTIME_DIR/qsroot/qs"
+/usr/lib/qt6/bin/qmllint -I "$XDG_RUNTIME_DIR/qsroot" BarWidget.qml Panel.qml
+
+# Copy (never symlink — the validator rejects symlinks) into the plugins
+# dir; the shell hot-reloads on save.
+rsync -a --delete --exclude .git ./ ~/.config/omarchy/plugins/dansmith888.momentum4/
+omarchy-shell shell toggle dansmith888.momentum4
+qs log -p "$OMARCHY_PATH/shell" --tail 100
+```
+
+`Style.*` members reported as "not found on type QObject" are lint noise;
+anything tagged `[syntax]` is real.
+
 ## Good to know
 
 **Charging isn't shown.** The headphones announce cable in/out over GAIA but
