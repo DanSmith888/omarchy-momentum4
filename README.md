@@ -68,7 +68,10 @@ headphones will tell us about:
 - **Bass boost**
 - **Touch controls** — enable or disable the on-cup controls
 - **Device settings** — On-head Detection, Smart Pause, Auto-Answer Calls,
-  Comfort Calls (the app's Device Settings pane)
+  Comfort Calls (the app's Device Settings pane), and a read-out of the
+  Hi-Res audio mode
+- **Not covered**: Auto Power Off and Tone & voice prompts — their commands
+  weren't found; see [PROTOCOL.md](PROTOCOL.md)
 
 Everything is read back from the headphones, so the panel always shows their
 real state — change something in Smart Control and it follows.

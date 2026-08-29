@@ -216,6 +216,12 @@ CMD_GET_CONTROLS = 0x1607
 # BlueZ's experimental org.bluez.Battery1 — no root anywhere.
 CMD_GET_BATTERY = 0x0603
 
+# Hi-Res 24 bit/96 kHz ("Audio mode priority" in Smart Control). Read-only
+# here: the only byte that changed between full snapshots with it on and off,
+# but a one-byte write to 0x1406 is rejected (0x05), so the setter is unknown.
+# Takes effect only after the headphones restart.
+CMD_GET_HIRES = 0x1407
+
 # Plain one-byte booleans (1 = on, not inverted like the touch controls).
 # IDs from gjabell/momentumctl, MIT; verified on firmware 3.38.3 by
 # probes/decode/momentumctl-verify.json. They sit in the 0x04xx-0x08xx groups
@@ -494,6 +500,10 @@ class Momentum4:
         _, _, p, ok = self.exchange(CMD_GET_BATTERY)
         return int(p[0]) if (ok and p) else None
 
+    def hi_res(self):
+        _, _, p, ok = self.exchange(CMD_GET_HIRES)
+        return bool(p[0]) if (ok and p) else None
+
     def get_bool(self, name):
         """True/False for a BOOL_FEATURES entry, None if unsupported."""
         _, _, p, ok = self.exchange(BOOL_FEATURES[name][0])
@@ -519,6 +529,7 @@ class Momentum4:
             "sound_mode": self.sound_mode(),
             "eq": self.eq(),
             "battery": self.battery(),
+            "hi_res": self.hi_res(),
             **{name: self.get_bool(name) for name in BOOL_FEATURES},
             "firmware": self.firmware(),
             "channel": self.channel,
@@ -683,6 +694,8 @@ def main():
                 ct = st.get("controls")
                 print(f"Controls:     {'unsupported' if ct is None else ('on' if ct else 'off')}")
                 print(f"Sound mode:   {st.get('sound_mode') or 'unknown'}")
+                hr = st.get("hi_res")
+                print(f"Hi-Res:       {'unknown' if hr is None else ('on' if hr else 'off')}  (read-only; change in Smart Control)")
                 for name in BOOL_FEATURES:
                     v = st.get(name)
                     label = (name.replace("_", " ").capitalize() + ":").ljust(14)

@@ -67,20 +67,27 @@ never found them — polling did.
 | `0x1409` | | byte, `02` seen | unknown three-state-looking neighbour — candidate for Tone & Voice Prompts |
 | `0x140b` | | 6 bytes, all zero | unknown |
 
-Still unknown from the Device Settings pane: **Auto Power Off** (Never / 15 /
-30 / 60 min) and **Tone & voice prompts** (voice / tone only / off, plus a
-language). Neither moved any odd ID in `0x0827–0x1fff`, so they are either
-in the response-form half of the space (`0x0100` bit set, which `gaia-probe`
-skips by default), even-numbered, or in `0x04xx`/`0x06xx`. Also seen and
-unexplained: `0x0807 = 00`, `0x0813 = 00`, `0x0819 = 05 00 01 02 03 04`.
+**Not found: Auto Power Off** (Never / 15 / 30 / 60 min) and **Tone & voice
+prompts** (voice / tone only / off, plus a language). Changing them moved no
+odd ID in `0x0827–0x1fff` or `0x2001–0x27ff`, and nothing in the response-form
+mirrors `0x09xx`/`0x15xx` (which simply repeat `0x08xx`/`0x14xx`). Watching
+`0x1401–0x141f` and `0x0807`/`0x0813` live while they were stepped through
+every value showed nothing either. What remains is the `0x04xx`/`0x06xx`
+hazard group, even-numbered IDs, or gets that need a payload — none of which
+is worth another sweep. Also seen and unexplained: `0x0807 = 00`,
+`0x0813 = 00`, `0x0819 = 05 00 01 02 03 04`, `0x2003`/`0x2005` (24 zero
+bytes), `0x2007` (14 zero bytes).
 
 ## ⚠️ `0x06xx` is the power/system group
 
 `0x0607` is not alone. A paced probe of `0x0609–0x06ff` reset the link at
-`0x0613`, reconnected, reset again at `0x0685`, and the headphones then went
-offline until powered on by hand. Polling `0x0403–0x041f` with `0x0601`/`0x0605`
-also reset the link once. All three IDs are in `gaia-probe`'s blocklist; do
-not sweep this group.
+`0x0613`, reconnected, and reset again at `0x0685`; the headphones were
+offline shortly after. Polling `0x0403–0x041f` with `0x0601`/`0x0605` also
+reset the link once. The resets are certain (the probe logs the ID in flight);
+the going-offline is not — the headphones were idle on a desk throughout, and
+Auto Power Off was set to 15 minutes, which fits the timing as well as any
+command does. Both IDs are in `gaia-probe`'s blocklist regardless; do not
+sweep this group.
 
 Why our sweeps missed them: they live in the range that `0x0607` sits in the
 middle of, and both sweeps of it took the headphones offline before reaching
