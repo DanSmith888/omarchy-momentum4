@@ -108,6 +108,7 @@ BarWidget {
       if (root.present) t += " — " + root.percentage + "%"
       if (root.charging) t += root.present ? " (USB-C connected)" : " — USB-C connected"
       else if (!root.present) t += " — battery unknown"
+      if (root.panel && root.panel.stale) t += " (last known — device busy)"
       return t
     }
 

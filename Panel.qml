@@ -54,6 +54,7 @@ Panel {
   property bool charging: false       // USB cable attached
   property bool devicePresent: false  // any supported headset connected
   property bool busy: false
+  property bool stale: false          // last poll failed; readings are old
 
   readonly property bool present: percentage >= 0
   readonly property bool low: present && percentage <= 20
@@ -162,6 +163,16 @@ Panel {
         try {
           var d = JSON.parse(out)
           root.devicePresent = !!d.mac
+          // The device is connected but m4ctl could not reach it — another
+          // client (the phone app, a research tool) holds the RFCOMM
+          // channel, or the lock timed out. That is transient: keep the
+          // last good readings rather than blanking the pill and greying
+          // every control, which reads as "the plugin died".
+          if (d.mac && d.battery === null && d.anc_supported !== true && root.ancSupported) {
+            root.stale = true
+            return
+          }
+          root.stale = false
           root.charging     = d.charging === true
           root.percentage   = (typeof d.battery === "number") ? d.battery : -1
           root.deviceName   = d.name || ""
