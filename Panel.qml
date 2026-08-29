@@ -708,6 +708,10 @@ Panel {
           width: parent.width
           height: smartPauseRow.height
           visible: root.smartPause !== null
+          // On-head Detection gates Smart Pause (the app's own description
+          // says so), so it reads as unavailable while the sensor is off.
+          enabled: root.onHead !== false
+          opacity: root.onHead !== false ? 1.0 : 0.4
 
           Text {
             anchors.left: parent.left
