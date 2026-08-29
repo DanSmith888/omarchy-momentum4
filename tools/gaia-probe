@@ -73,7 +73,13 @@ DEFAULT_END = 0x1AFF
 # 0x0609-0x06ff reset the link at each of them in turn, and after the second
 # the headphones went offline. Treat the whole 0x06xx group as the device's
 # power/system space and avoid sweeping it.
-DANGEROUS = {0x0607, 0x060F, 0x0613, 0x0683, 0x0685}
+#
+# 0x1403 (and, less certainly, 0x0801 / 0x0805 / 0x0817) take a device index
+# and act on the paired-device list: sending 0x1403 [00] during an indexed
+# scan un-paired the phone. They answer an indexed payload with a bare OK
+# and no data — the signature of an action, not a getter. Never send them.
+DANGEROUS = {0x0607, 0x060F, 0x0613, 0x0683, 0x0685,
+             0x1403, 0x0801, 0x0805, 0x0817}
 
 KNOWN = {
     0x0007: "register notification",

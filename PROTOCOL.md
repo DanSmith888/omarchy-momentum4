@@ -85,6 +85,18 @@ link negotiates aptX HD at 44.1 or 48 kHz whatever the headphones are set to.
 Battery over GAIA (`0x0603`) keeps answering while charging — only BlueZ's
 `Battery1` went blank on the cable.
 
+### Paired devices (`0x14xx`) — read-only, and one of them is a trap
+
+| Command | Payload | Meaning |
+|---|---|---|
+| `0x1401` get | `<index>` → `<index> 01 01 <name…> 00` | **Paired device list**: index 0 was the phone, index 1 this PC, names as C strings |
+| `0x1403` | `<index>` → bare OK | **Forgets that device.** Found the hard way: an indexed scan sent `0x1403 [00]` and the phone's pairing was gone. Blocklisted |
+| `0x0801`, `0x0805`, `0x0817` | `<index>` → bare OK | Also act on a device index, effect unknown; blocklisted on the same signature |
+
+**Rule for indexed scans:** a getter answers an index with *data*; an ID that
+answers an indexed payload with an empty OK is an action. Stop at the first
+one — do not probe the next index.
+
 **Not found: Tone & voice prompts** (voice / tone only / off, plus a language). Changing them moved no
 odd ID in `0x0827–0x1fff` or `0x2001–0x27ff`, and nothing in the response-form
 mirrors `0x09xx`/`0x15xx` (which simply repeat `0x08xx`/`0x14xx`). Watching
