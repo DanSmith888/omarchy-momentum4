@@ -60,7 +60,8 @@ omarchy-shell shell toggle dansmith888.momentum4
 Everything Sennheiser's **Smart Control** phone app exposes that the
 headphones will tell us about:
 
-- **Battery** in the bar, at a glance
+- **Battery** in the bar, at a glance — and in the panel, the codec and
+  sample rate PipeWire is actually sending (aptX HD · 44.1 kHz, say)
 - **Noise control** — Adaptive / Custom / Off, with the ANC ↔ Transparency slider
 - **Anti-wind** — Off / Auto / Max
 - **Sound mode** — Graphic EQ or Speech Clarity
