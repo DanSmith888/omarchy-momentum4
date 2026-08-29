@@ -267,6 +267,11 @@ Panel {
         anchors.top: parent.top
         anchors.margins: Style.spacing.panelPadding
         spacing: Style.spacing.sm
+        // While the device is connected but not answering (another client
+        // holds the channel), the readings are last-known and a write would
+        // only queue behind the lock and fail — so nothing is clickable.
+        enabled: !root.stale
+        opacity: root.stale ? 0.55 : 1.0
 
         Text {
           text: root.deviceName !== "" ? root.deviceName : "Headphones"
@@ -274,6 +279,16 @@ Panel {
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.bold: true
+        }
+
+        Text {
+          text: "Device busy — showing last known state; controls return when it answers"
+          visible: root.stale
+          color: Qt.darker(root.barForeground, 1.4)
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          wrapMode: Text.WordWrap
+          width: parent.width
         }
 
         Text {
