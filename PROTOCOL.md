@@ -59,12 +59,28 @@ These are *not* inverted, unlike the touch controls at `0x1607`. The device
 sends **no notification** when the app changes them, which is why listening
 never found them — polling did.
 
-Still unknown from the same pane: **Auto Power Off** (a duration, 15 min by
-default) and **Tone & voice prompts** (Tone only / voice / off). Also seen
-nearby and unexplained: `0x0807 = 00`, `0x0813 = 00`, and `0x0819 =
-05 00 01 02 03 04` (a five-entry list). Polling the untested `0x0403–0x041f`
-and `0x0601`/`0x0605` getters reset the Bluetooth link once — treat that group
-with the same caution as `0x0607`.
+### Audio mode priority (`0x14xx`)
+
+| Get | Set | Payload | Meaning |
+|---|---|---|---|
+| `0x1407` | `0x1406`? | byte bool | **Hi-Res 24 bit/96 kHz** — the only byte in `0x0827–0x1fff` that changed between two full snapshots taken with it on and off. Takes effect after a restart of the headphones. A one-byte write to `0x1406` is rejected with `0x05` (malformed), so the setter's shape is still unknown |
+| `0x1409` | | byte, `02` seen | unknown three-state-looking neighbour — candidate for Tone & Voice Prompts |
+| `0x140b` | | 6 bytes, all zero | unknown |
+
+Still unknown from the Device Settings pane: **Auto Power Off** (Never / 15 /
+30 / 60 min) and **Tone & voice prompts** (voice / tone only / off, plus a
+language). Neither moved any odd ID in `0x0827–0x1fff`, so they are either
+in the response-form half of the space (`0x0100` bit set, which `gaia-probe`
+skips by default), even-numbered, or in `0x04xx`/`0x06xx`. Also seen and
+unexplained: `0x0807 = 00`, `0x0813 = 00`, `0x0819 = 05 00 01 02 03 04`.
+
+## ⚠️ `0x06xx` is the power/system group
+
+`0x0607` is not alone. A paced probe of `0x0609–0x06ff` reset the link at
+`0x0613`, reconnected, reset again at `0x0685`, and the headphones then went
+offline until powered on by hand. Polling `0x0403–0x041f` with `0x0601`/`0x0605`
+also reset the link once. All three IDs are in `gaia-probe`'s blocklist; do
+not sweep this group.
 
 Why our sweeps missed them: they live in the range that `0x0607` sits in the
 middle of, and both sweeps of it took the headphones offline before reaching
