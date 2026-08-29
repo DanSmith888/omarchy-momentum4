@@ -709,7 +709,6 @@ Panel {
           foreground: root.barForeground
           visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null
         }
-
         Item {
           width: parent.width
           height: onHeadRow.height
@@ -746,13 +745,12 @@ Panel {
             }
           }
         }
-
         Item {
           width: parent.width
           height: smartPauseRow.height
           visible: root.smartPause !== null
-          // On-head Detection gates Smart Pause (the app's own description
-          // says so), so it reads as unavailable while the sensor is off.
+          // On-head Detection drives this (the app's own description lists
+          // it), so it reads as unavailable while the sensor is off.
           enabled: root.onHead !== false
           opacity: root.onHead !== false ? 1.0 : 0.4
 
@@ -787,11 +785,14 @@ Panel {
             }
           }
         }
-
         Item {
           width: parent.width
           height: autoAnswerRow.height
           visible: root.autoAnswer !== null
+          // On-head Detection drives this (the app's own description lists
+          // it), so it reads as unavailable while the sensor is off.
+          enabled: root.onHead !== false
+          opacity: root.onHead !== false ? 1.0 : 0.4
 
           Text {
             anchors.left: parent.left
@@ -825,6 +826,46 @@ Panel {
           }
         }
 
+        // Smart Control's Auto Power Off: Never / 15 / 30 / 60 min. Label and
+        // buttons on separate lines — four buttons do not fit beside a label.
+        Column {
+          width: parent.width
+          spacing: Style.spacing.xs
+          visible: root.autoOff !== null
+          // On-head Detection drives this (the app's own description lists
+          // it), so it reads as unavailable while the sensor is off.
+          enabled: root.onHead !== false
+          opacity: root.onHead !== false ? 1.0 : 0.4
+
+          Text {
+            text: "Auto Power Off (minutes)"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            id: autoOffRow
+            spacing: Style.spacing.sm
+
+            Repeater {
+              model: [
+                { label: "Never", choice: "never", secs: 0 },
+                { label: "15",    choice: "15",    secs: 900 },
+                { label: "30",    choice: "30",    secs: 1800 },
+                { label: "60",    choice: "60",    secs: 3600 }
+              ]
+              Button {
+                required property var modelData
+                text: modelData.label
+                bordered: true
+                selected: root.autoOff === modelData.secs
+                foreground: root.barForeground
+                tooltipText: "Sets the time after which your device turns itself off to save power"
+                onClicked: root.setAutoOff(modelData.choice)
+              }
+            }
+          }
+        }
         Item {
           width: parent.width
           height: comfortCallRow.height
@@ -858,45 +899,6 @@ Panel {
               foreground: root.barForeground
               tooltipText: "Gives phone calls a more natural sound stage"
               onClicked: root.setFeature("comfort-call", root.comfortCall, true)
-            }
-          }
-        }
-
-        // Smart Control's Auto Power Off: Never / 15 / 30 / 60 min.
-        Item {
-          width: parent.width
-          height: autoOffRow.height
-          visible: root.autoOff !== null
-
-          Text {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "Auto Power Off"
-            color: root.barForeground
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-          }
-          Row {
-            id: autoOffRow
-            anchors.right: parent.right
-            spacing: Style.spacing.sm
-
-            Repeater {
-              model: [
-                { label: "Never", choice: "never", secs: 0 },
-                { label: "15",    choice: "15",    secs: 900 },
-                { label: "30",    choice: "30",    secs: 1800 },
-                { label: "60",    choice: "60",    secs: 3600 }
-              ]
-              Button {
-                required property var modelData
-                text: modelData.label
-                bordered: true
-                selected: root.autoOff === modelData.secs
-                foreground: root.barForeground
-                tooltipText: "Sets the time after which your device turns itself off to save power (minutes)"
-                onClicked: root.setAutoOff(modelData.choice)
-              }
             }
           }
         }
