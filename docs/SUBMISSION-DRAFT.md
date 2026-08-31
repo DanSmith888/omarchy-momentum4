@@ -1,6 +1,6 @@
-<!-- Draft marketplace submission. NOT submitted. Review, then:
+<!-- Marketplace submission for omarchyplugins.com. To send:
 gh issue create --repo HANCORE-linux/omarchy-plugin-marketplace --title "[Plugin]: Momentum4" --body-file docs/SUBMISSION-DRAFT.md
-(strip this comment first, and push the repo + v1.0.0 tag before submitting) -->
+(strip this comment block first; the form also works — paste each section into its field) -->
 ### Repository URL
 
 https://github.com/DanSmith888/omarchy-momentum4
@@ -19,9 +19,11 @@ _No response_
 
 ### Maintainer notes
 
-Self-contained: stdlib Python only, no external binaries, no network access, no root. Asks `bluetoothctl` which device is connected and talks to the headphones over an RFCOMM socket, as the user.
+Battery, noise control, EQ and device settings for the Sennheiser Momentum 4, in the bar. Speaks the headphones' own GAIA protocol over RFCOMM — no external CLI, no daemon, no network, no root. Plain Python from the standard library; the widget runs `bin/m4status` and `bin/m4ctl` as the user, which ask `bluetoothctl` which device is connected and then talk to the headphones over a Bluetooth socket. The only file written outside the plugin folder is a lock in `$XDG_RUNTIME_DIR`.
 
-`tools/` is the reverse-engineering kit behind PROTOCOL.md; the widget never executes it.
+Install is a single `omarchy plugin add`; nothing in BlueZ or /etc needs changing. `omarchy plugin remove` takes everything with it.
+
+`tools/` is the reverse-engineering kit behind PROTOCOL.md (which documents the command set for anyone else writing for these headphones). The widget never executes it.
 
 ### Submission checklist
 
