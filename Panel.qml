@@ -289,53 +289,30 @@ Panel {
         enabled: !root.stale
         opacity: root.stale ? 0.55 : 1.0
 
-        // Title row: name on the left, the same headphone glyph the bar pill
-        // uses on the right, so the panel is identifiable at a glance.
-        Item {
+        // The shell's standard panel header: glyph left, title, status badge
+        // right — the shape the built-in panels and other plugins use.
+        PanelHero {
           width: parent.width
-          height: Math.max(panelTitle.height, panelGlyph.height)
-
-          Text {
-            id: panelTitle
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.deviceName !== "" ? root.deviceName : "Headphones"
-            color: root.barForeground
-            font.family: Style.font.family
-            font.pixelSize: Style.font.body
-            font.bold: true
-          }
-
-          Text {
-            id: panelGlyph
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            text: "󰋋"
-            color: root.barForeground
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
-            font.pixelSize: Style.font.display
-          }
-        }
-
-        Text {
-          text: "Device busy — showing last known state; controls return when it answers"
-          visible: root.stale
-          color: Qt.darker(root.barForeground, 1.4)
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          wrapMode: Text.WordWrap
-          width: parent.width
-        }
-
-        Text {
-          text: (root.present ? "Battery " + root.percentage + "%" + (root.charging ? " — charging" : "")
-              : root.charging ? "Charging — battery not reported over Bluetooth"
+          title: root.deviceName !== "" ? root.deviceName : "Headphones"
+          meta: (root.present ? "Battery " + root.percentage + "%" + (root.charging ? " · charging" : "")
+              : root.charging ? "Charging · battery not reported"
               : "Battery unknown")
               + (root.streamText !== "" ? "  ·  " + root.streamText : "")
-          color: root.low ? Color.urgent : Qt.darker(root.barForeground, 1.3)
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
+          detail: root.stale ? "BUSY" : (root.devicePresent ? "CONNECTED" : "OFFLINE")
+          foreground: root.barForeground
+          fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+          iconOpacity: root.devicePresent && !root.stale ? 1 : 0.5
+          iconComponent: Component {
+            Text {
+              text: "󰋋"
+              color: root.barForeground
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.display
+            }
+          }
         }
+
+
 
         PanelSeparator {
           anchors.left: parent.left
