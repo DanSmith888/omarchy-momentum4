@@ -289,12 +289,32 @@ Panel {
         enabled: !root.stale
         opacity: root.stale ? 0.55 : 1.0
 
-        Text {
-          text: root.deviceName !== "" ? root.deviceName : "Headphones"
-          color: root.barForeground
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
-          font.bold: true
+        // Title row: name on the left, the same headphone glyph the bar pill
+        // uses on the right, so the panel is identifiable at a glance.
+        Item {
+          width: parent.width
+          height: Math.max(panelTitle.height, panelGlyph.height)
+
+          Text {
+            id: panelTitle
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.deviceName !== "" ? root.deviceName : "Headphones"
+            color: root.barForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.body
+            font.bold: true
+          }
+
+          Text {
+            id: panelGlyph
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: "󰋋"
+            color: root.barForeground
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.font.display
+          }
         }
 
         Text {
