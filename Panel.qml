@@ -294,10 +294,12 @@ Panel {
         PanelHero {
           width: parent.width
           title: root.deviceName !== "" ? root.deviceName : "Headphones"
-          meta: (root.present ? "Battery " + root.percentage + "%" + (root.charging ? " · charging" : "")
-              : root.charging ? "Charging · battery not reported"
+          // Kept short: the badge eats the right-hand side, and a longer
+          // string elides mid-codec.
+          meta: (root.present ? root.percentage + "%" + (root.charging ? " · charging" : "")
+              : root.charging ? "Charging"
               : "Battery unknown")
-              + (root.streamText !== "" ? "  ·  " + root.streamText : "")
+              + (root.streamText !== "" ? " · " + root.streamText : "")
           detail: root.stale ? "BUSY" : (root.devicePresent ? "CONNECTED" : "OFFLINE")
           foreground: root.barForeground
           fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
