@@ -19,11 +19,11 @@ _No response_
 
 ### Maintainer notes
 
-Battery, noise control, EQ and device settings for the Sennheiser Momentum 4, in the bar. Speaks the headphones' own GAIA protocol over RFCOMM — no external CLI, no daemon, no network, no root. Plain Python from the standard library; the widget runs `bin/m4status` and `bin/m4ctl` as the user, which ask `bluetoothctl` which device is connected and then talk to the headphones over a Bluetooth socket. The only file written outside the plugin folder is a lock in `$XDG_RUNTIME_DIR`.
+Your Sennheiser Momentum 4, controlled from the bar instead of your phone. Battery in the pill; click it for everything the Smart Control app gives you — Adaptive/Custom/Off noise control with the ANC ↔ Transparency slider, anti-wind, the five-band EQ with all eight presets, bass boost, Speech Clarity, and the device settings (on-head detection, smart pause, auto-answer, auto power off, comfort calls, touch controls). Change something on the phone and the panel follows.
 
-Install is a single `omarchy plugin add`; nothing in BlueZ or /etc needs changing. `omarchy plugin remove` takes everything with it.
+Zero setup: pair the headphones, `omarchy plugin add`, done. No app to install, no daemon, no root, no BlueZ tweaks. Talks straight to the headphones in their own protocol using plain Python from the standard library, as your user, over a Bluetooth socket. `omarchy plugin remove` takes everything with it.
 
-`tools/` is the reverse-engineering kit behind PROTOCOL.md (which documents the command set for anyone else writing for these headphones). The widget never executes it.
+Bonus for tinkerers: PROTOCOL.md documents the Momentum 4's command set, found by reverse-engineering — useful for anyone writing for these headphones on any platform. The `tools/` folder is that research kit; the widget never runs it.
 
 ### Submission checklist
 
