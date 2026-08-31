@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "id": "dansmith888.momentum4",
-  "name": "Momentum4",
-  "version": "1.3.1",
+  "name": "Sennheiser Momentum 4",
+  "version": "1.3.2",
   "author": "Daniel Smith",
   "license": "MIT",
   "description": "Sennheiser Momentum 4 battery, noise control, EQ, phone-call and touch settings in the Omarchy bar",
@@ -13,7 +13,7 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Momentum4",
+    "displayName": "Sennheiser Momentum 4",
     "description": "Battery, noise control, EQ and touch controls for the Sennheiser Momentum 4",
     "category": "Audio",
     "allowMultiple": false,

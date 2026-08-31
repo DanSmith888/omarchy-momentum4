@@ -1,5 +1,5 @@
 <!-- Marketplace submission for omarchyplugins.com. To send:
-gh issue create --repo HANCORE-linux/omarchy-plugin-marketplace --title "[Plugin]: Momentum4" --body-file docs/SUBMISSION-DRAFT.md
+gh issue create --repo HANCORE-linux/omarchy-plugin-marketplace --title "[Plugin]: Sennheiser Momentum 4" --body-file docs/SUBMISSION-DRAFT.md
 (strip this comment block first; the form also works — paste each section into its field) -->
 ### Repository URL
 

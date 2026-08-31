@@ -1,4 +1,4 @@
-# Momentum4
+# Sennheiser Momentum 4
 
 Control your **Sennheiser Momentum 4** headphones from the [Omarchy](https://omarchy.org/) bar — battery, noise control, EQ and touch controls, without reaching for your phone.
 
