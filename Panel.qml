@@ -300,10 +300,13 @@ Panel {
               : root.charging ? "Charging"
               : "Battery unknown")
               + (root.streamText !== "" ? " · " + root.streamText : "")
-          detail: root.stale ? "BUSY" : (root.devicePresent ? "CONNECTED" : "OFFLINE")
+          // No "connected" badge: the widget hides itself when the headphones
+          // are away, so it would only ever say one thing. BUSY is worth a
+          // badge because the panel otherwise looks connected but inert.
+          detail: root.stale ? "BUSY" : ""
           foreground: root.barForeground
           fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
-          iconOpacity: root.devicePresent && !root.stale ? 1 : 0.5
+          iconOpacity: root.stale ? 0.5 : 1
           iconComponent: Component {
             Text {
               text: "󰋋"
