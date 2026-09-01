@@ -12,7 +12,7 @@ file holds only what is specific to this repo.
 - id / IPC target / `moduleName`: `dansmith888.momentum4`
 - repo: `https://github.com/DanSmith888/omarchy-momentum4.git`
 - installed copy: `~/.config/omarchy/plugins/dansmith888.momentum4`
-- kind: `bar-widget`, entry point `BarWidget.qml`; published; manifest 1.3.0, tags up to `v1.2.0` (tag on release)
+- kind: `bar-widget`, entry point `BarWidget.qml`; published; manifest 1.3.6, tags up to `v1.3.6` (tag on release)
 
 ## Map
 
@@ -36,7 +36,7 @@ file holds only what is specific to this repo.
 - `PROTOCOL.md`, `probes/`, `tools/gaia-*`, `tools/eq-capture`, the
   reverse-engineering kit. **Never run by the widget.** `probes/decode/*.json`
   are captured firmware answers per feature.
-- `docs/SUBMISSION-DRAFT.md`, marketplace issue body; **unsubmitted**.
+- `docs/SUBMISSION-DRAFT.md`, marketplace issue body; submitted 1 Sep 2026, awaiting maintainer approval.
 
 ## Dev loop
 
