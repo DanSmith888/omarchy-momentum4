@@ -64,6 +64,17 @@ Panel {
   property bool busy: false
   property bool stale: false          // last poll failed; readings are old
 
+  // The headphones report their Bluetooth name as "MOMENTUM 4"; shouting it
+  // in the header reads worse than the product's own name. Title-case only
+  // when the name is entirely upper case, so a device that names itself
+  // properly is left alone.
+  readonly property string displayName: {
+    var n = root.deviceName !== "" ? root.deviceName : "Headphones"
+    return n === n.toUpperCase()
+      ? n.toLowerCase().replace(/\b[a-z]/g, function (c) { return c.toUpperCase() })
+      : n
+  }
+
   readonly property bool present: percentage >= 0
   readonly property bool low: present && percentage <= 20
 
@@ -262,10 +273,7 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(300))
-    // panelColumn.implicitHeight excludes its own anchors.margins, so passing
-    // it raw made the panel two paddings too short and clipped the last row.
-    contentHeight: panel.fittedContentHeight(
-      panelColumn.implicitHeight + Style.spacing.panelPadding * 2, Style.space(900))
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(900))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -278,10 +286,10 @@ Panel {
 
       Column {
         id: panelColumn
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: Style.spacing.panelPadding
+        // anchors.fill, no margins of our own: KeyboardPanel already pads the
+        // surface, and adding panelPadding on top of it was what made this
+        // panel sit inside a much fatter border than the built-in ones.
+        anchors.fill: parent
         spacing: Style.spacing.sm
         // While the device is connected but not answering (another client
         // holds the channel), the readings are last-known and a write would
@@ -293,7 +301,7 @@ Panel {
         // right — the shape the built-in panels and other plugins use.
         PanelHero {
           width: parent.width
-          title: root.deviceName !== "" ? root.deviceName : "Headphones"
+          title: root.displayName
           // Kept short: the badge eats the right-hand side, and a longer
           // string elides mid-codec.
           meta: (root.present ? root.percentage + "%" + (root.charging ? " · charging" : "")
