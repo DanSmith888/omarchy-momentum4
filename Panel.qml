@@ -80,6 +80,21 @@ Panel {
 
   readonly property string pluginDir: Qt.resolvedUrl(".").toString().replace("file://", "")
 
+  // A stalled command must not wedge polling. Any Process still running when
+  // this fires is cancelled, so the next poll starts clean.
+  property int watchdogSeconds: 10
+  Timer {
+    interval: root.watchdogSeconds * 1000
+    repeat: true
+    running: true
+    onTriggered: {
+      if (statusProc.running) statusProc.running = false
+      if (presetProc.running) presetProc.running = false
+      if (actionProc.running) actionProc.running = false
+    }
+  }
+
+
   function refresh() {
     if (!statusProc.running) statusProc.running = true
   }
@@ -317,6 +332,7 @@ Panel {
           iconOpacity: root.stale ? 0.5 : 1
           iconComponent: Component {
             Text {
+              textFormat: Text.PlainText
               text: "󰋋"
               color: root.barForeground
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
@@ -378,6 +394,8 @@ Panel {
           opacity: root.customMode ? 1.0 : 0.45
 
           Text {
+
+            textFormat: Text.PlainText
             id: ancLabel
             anchors.left: parent.left
             color: Qt.darker(root.barForeground, 1.4)
@@ -388,6 +406,7 @@ Panel {
                 : "ANC " + (100 - root.uiLevel) + "%"
           }
           Text {
+            textFormat: Text.PlainText
             anchors.right: parent.right
             color: Qt.darker(root.barForeground, 1.4)
             font.family: Style.font.family
@@ -423,6 +442,8 @@ Panel {
           opacity: root.customMode ? 1.0 : 0.45
 
           Text {
+
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Anti-wind"
@@ -591,6 +612,8 @@ Panel {
               }
 
               Text {
+
+                textFormat: Text.PlainText
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 text: (bandCol.v > 0 ? "+" : "") + bandCol.v.toFixed(1)
@@ -602,6 +625,7 @@ Panel {
               // The app's nominal labels; the device's real centres are
               // 90/325/1500/6500/6500 Hz.
               Text {
+                textFormat: Text.PlainText
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 text: ["63Hz", "250Hz", "1kHz", "4kHz", "8kHz"][index]
@@ -623,6 +647,8 @@ Panel {
           opacity: root.eqMode ? 1.0 : 0.4
 
           Text {
+
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Bass boost"
@@ -672,6 +698,8 @@ Panel {
           visible: root.onHead !== null
 
           Text {
+
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "On-head Detection"
@@ -712,6 +740,8 @@ Panel {
           opacity: root.onHead !== false ? 1.0 : 0.4
 
           Text {
+
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Smart Pause"
@@ -752,6 +782,8 @@ Panel {
           opacity: root.onHead !== false ? 1.0 : 0.4
 
           Text {
+
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Auto-Answer Calls"
@@ -795,6 +827,8 @@ Panel {
           opacity: root.onHead !== false ? 1.0 : 0.4
 
           Text {
+
+            textFormat: Text.PlainText
             text: "Auto Power Off (minutes)"
             color: root.barForeground
             font.family: Style.font.family
@@ -835,6 +869,8 @@ Panel {
           visible: root.comfortCall !== null
 
           Text {
+
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Comfort Calls"
@@ -875,6 +911,8 @@ Panel {
           visible: root.controls !== null
 
           Text {
+
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Touch controls"
@@ -907,6 +945,8 @@ Panel {
         }
 
         Text {
+
+          textFormat: Text.PlainText
           text: "Noise control unavailable for this device"
           visible: !root.ancSupported
           color: Qt.darker(root.barForeground, 1.4)
