@@ -54,7 +54,7 @@ Panel {
   property var autoOff: null          // seconds, 0 = never; null = unsupported
   property string codec: ""           // what PipeWire negotiated (pactl)
   property int sampleRate: 0
-  // "aptX HD · 44.1 kHz" — read from PipeWire, not the headphones, because
+  // "aptX HD · 44.1 kHz", read from PipeWire, not the headphones, because
   // the OS side decides the codec and it is what the user can act on.
   readonly property string streamText: root.codec === "" ? ""
       : root.codec + (root.sampleRate > 0
@@ -92,8 +92,8 @@ Panel {
   }
 
   // Axis runs ANC (left) to Transparency (right), matching the Sennheiser
-  // iOS app. That ordering happens to match the hardware exactly — raw 0 is
-  // full ANC and raw 100 is full transparency — so the slider value is the
+  // iOS app. That ordering happens to match the hardware exactly, raw 0 is
+  // full ANC and raw 100 is full transparency, so the slider value is the
   // device value and no conversion is needed. The earlier Transparency-left
   // layout read more naturally but required inverting every read and write,
   // and disagreed with the app.
@@ -113,7 +113,7 @@ Panel {
     apply(["bass", on ? "on" : "off"])
   }
 
-  // Only Custom exposes the slider and anti-wind — Adaptive drives them
+  // Only Custom exposes the slider and anti-wind, Adaptive drives them
   // itself and Off bypasses them, exactly as the Sennheiser app does.
   readonly property bool customMode: root.mode === "custom"
 
@@ -134,7 +134,7 @@ Panel {
   readonly property real eqRange: 6.0   // dB shown at full bar height
 
   // Drag and scroll update the local curve immediately so the bar tracks the
-  // finger, and only commit on release — writing on every pixel of a drag
+  // finger, and only commit on release, writing on every pixel of a drag
   // would queue dozens of RFCOMM round trips behind the lock.
   function setEqLocal(band, db) {
     if (!root.eq) return
@@ -187,7 +187,7 @@ Panel {
         try {
           var d = JSON.parse(out)
           root.devicePresent = !!d.mac
-          // The device is connected but m4ctl could not reach it — another
+          // The device is connected but m4ctl could not reach it, another
           // client (the phone app, a research tool) holds the RFCOMM
           // channel, or the lock timed out. That is transient: keep the
           // last good readings rather than blanking the pill and greying
@@ -293,12 +293,12 @@ Panel {
         spacing: Style.spacing.sm
         // While the device is connected but not answering (another client
         // holds the channel), the readings are last-known and a write would
-        // only queue behind the lock and fail — so nothing is clickable.
+        // only queue behind the lock and fail, so nothing is clickable.
         enabled: !root.stale
         opacity: root.stale ? 0.55 : 1.0
 
         // The shell's standard panel header: glyph left, title, status badge
-        // right — the shape the built-in panels and other plugins use.
+        // right, the shape the built-in panels and other plugins use.
         PanelHero {
           width: parent.width
           title: root.displayName
@@ -514,7 +514,7 @@ Panel {
           opacity: root.eqMode ? 1.0 : 0.4
         }
 
-        // Presets are ours, not the device's — applying one writes all bands.
+        // Presets are ours, not the device's, applying one writes all bands.
         // "Custom" lights when the curve matches no preset, which is what
         // happens as soon as a band is changed by hand.
         Flow {
@@ -784,7 +784,7 @@ Panel {
         }
 
         // Smart Control's Auto Power Off: Never / 15 / 30 / 60 min. Label and
-        // buttons on separate lines — four buttons do not fit beside a label.
+        // buttons on separate lines, four buttons do not fit beside a label.
         Column {
           width: parent.width
           spacing: Style.spacing.xs

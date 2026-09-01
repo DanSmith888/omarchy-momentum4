@@ -10,9 +10,9 @@ import qs.Ui
 // This is the manifest entry point. It owns nothing but the pill and the IPC
 // target; every piece of device state lives in Panel.qml, which is loaded
 // here and read through panelLoader.item. That split is the shape the shell
-// routes on — Bar.findPanelWidget looks for open/close/opened on the widget
+// routes on, Bar.findPanelWidget looks for open/close/opened on the widget
 // mounted in the bar slot, and the popout coordinator identifies the panel
-// by that same widget — so the pill must be the thing the bar sees.
+// by that same widget, so the pill must be the thing the bar sees.
 BarWidget {
   id: root
   moduleName: "dansmith888.momentum4"
@@ -105,10 +105,10 @@ BarWidget {
     tooltipText: {
       if (root.deviceName === "") return "Headphones"
       var t = root.deviceName
-      if (root.present) t += " — " + root.percentage + "%"
-      if (root.charging) t += root.present ? " (USB-C connected)" : " — USB-C connected"
-      else if (!root.present) t += " — battery unknown"
-      if (root.panel && root.panel.stale) t += " (last known — device busy)"
+      if (root.present) t += ", " + root.percentage + "%"
+      if (root.charging) t += root.present ? " (USB-C connected)" : ", USB-C connected"
+      else if (!root.present) t += ", battery unknown"
+      if (root.panel && root.panel.stale) t += " (last known, device busy)"
       return t
     }
 
