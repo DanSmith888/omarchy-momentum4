@@ -90,16 +90,24 @@ Panel {
     return out.length > root.maxOutputBytes ? "" : out.trim()
   }
 
-  // A stalled command must not wedge polling. Setting running = false asks
-  // Quickshell to signal the child; a process still alive on the next tick
-  // has ignored that, so it is escalated to SIGKILL. Without the second
-  // stage a wedged helper would be "cancelled" every tick and never die.
+  // A stalled command must not wedge polling, but only a command that has
+  // actually stalled. Cancelling whatever happens to be running on a fixed
+  // tick killed healthy polls: at a 10s tick with a 1s or 2s poll the two
+  // align exactly, the cancelled read came back empty, and the pill vanished
+  // until the next poll. Tick often, cancel on measured age.
   property int watchdogSeconds: 10
-
-  function reap(proc) {
-    if (!proc.running) return
-    if (proc.hasOwnProperty("signal")) proc.signal(9)   // SIGKILL
-    proc.running = false
+  property var procStartedAt: ({})
+  Timer {
+    interval: 1000
+    repeat: true
+    running: true
+    onTriggered: {
+      var now = Date.now()
+      var limit = root.watchdogSeconds * 1000
+      if (statusProc.running && now - (root.procStartedAt["statusProc"] || now) > limit) statusProc.running = false
+      if (presetProc.running && now - (root.procStartedAt["presetProc"] || now) > limit) presetProc.running = false
+      if (actionProc.running && now - (root.procStartedAt["actionProc"] || now) > limit) actionProc.running = false
+    }
   }
 
   Timer {
@@ -227,6 +235,7 @@ Panel {
 
   Process {
     id: statusProc
+    onRunningChanged: if (running) root.procStartedAt["statusProc"] = Date.now()
     command: [root.pluginDir + "bin/m4status"]
     stdout: StdioCollector {
       onStreamFinished: {
@@ -281,6 +290,7 @@ Panel {
 
   Process {
     id: presetProc
+    onRunningChanged: if (running) root.procStartedAt["presetProc"] = Date.now()
     command: [root.pluginDir + "bin/m4ctl", "presets", "--json"]
     running: true
     stdout: StdioCollector {
@@ -293,6 +303,7 @@ Panel {
 
   Process {
     id: actionProc
+    onRunningChanged: if (running) root.procStartedAt["actionProc"] = Date.now()
     onExited: { root.busy = false; root.refresh() }
   }
 
