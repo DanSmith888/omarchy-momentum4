@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "dansmith888.momentum4",
   "name": "Sennheiser Momentum 4",
-  "version": "1.3.10",
+  "version": "1.4.2",
   "author": "Daniel Smith",
   "license": "MIT",
   "description": "Sennheiser Momentum 4 battery, noise control, EQ, phone-call and touch settings in the Omarchy bar",

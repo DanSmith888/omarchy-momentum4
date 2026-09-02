@@ -90,51 +90,87 @@ Panel {
     return out.length > root.maxOutputBytes ? "" : out.trim()
   }
 
-  // A stalled command must not wedge polling, but only a command that has
-  // actually stalled. Cancelling whatever happens to be running on a fixed
-  // tick killed healthy polls: at a 10s tick with a 1s or 2s poll the two
-  // align exactly, the cancelled read came back empty, and the pill vanished
-  // until the next poll. Tick often, cancel on measured age.
-  property int watchdogSeconds: 10
-  property var procStartedAt: ({})
+  // One watchdog, one state machine, measured age per process.
+  //
+  // Quickshell's Process exposes no signal(): `running = false` is the only
+  // stop it offers, and there is no way to escalate through it. So stage one
+  // asks politely, and stage two hard-kills by processId through
+  // Quickshell.execDetached, which also works while the component is being
+  // torn down. A fixed-interval cancel is not used: at a 10s tick with a 1s
+  // poll the two align, a healthy read is cancelled, and the pill vanishes.
+  //
+  // Teardown is transitive without killing the group: these children are
+  // spawned by the shell, so their process group is the shell's and killing
+  // it would take the bar down. Instead each backend re-parents its own
+  // children with setsid and arms PR_SET_PDEATHSIG, so killing the direct
+  // child is enough, the rest follow.
+  readonly property int watchdogSeconds: 10    // age before we ask it to stop
+  readonly property int killGraceSeconds: 3    // further grace before SIGKILL
+
+  property var procStartedAt: ({})   // key -> ms when running went true
+  property var procTermedAt: ({})    // key -> ms when we asked it to stop
+
+  function watchedProcs() {
+    return { statusProc: statusProc, presetProc: presetProc, actionProc: actionProc }
+  }
+
+  function noteStarted(key, isRunning) {
+    var started = root.procStartedAt, termed = root.procTermedAt
+    if (isRunning) {
+      started[key] = Date.now()
+      delete termed[key]
+    } else {
+      delete started[key]
+      delete termed[key]
+    }
+    root.procStartedAt = started
+    root.procTermedAt = termed
+  }
+
+  // Hard stop. Reads processId first: clearing running detaches it.
+  function hardKill(proc) {
+    var pid = proc.processId
+    proc.running = false
+    if (pid > 0) Quickshell.execDetached(["kill", "-9", String(pid)])
+  }
+
+  function reapAll() {
+    var procs = root.watchedProcs()
+    for (var key in procs) {
+      if (procs[key].running) root.hardKill(procs[key])
+    }
+  }
+
   Timer {
     interval: 1000
     repeat: true
     running: true
     onTriggered: {
       var now = Date.now()
-      var limit = root.watchdogSeconds * 1000
-      if (statusProc.running && now - (root.procStartedAt["statusProc"] || now) > limit) statusProc.running = false
-      if (presetProc.running && now - (root.procStartedAt["presetProc"] || now) > limit) presetProc.running = false
-      if (actionProc.running && now - (root.procStartedAt["actionProc"] || now) > limit) actionProc.running = false
-    }
-  }
-
-  Timer {
-    id: watchdog
-    interval: root.watchdogSeconds * 1000
-    repeat: true
-    running: true
-    property var pending: ({})
-    onTriggered: {
-      var procs = { status: statusProc, preset: presetProc, action: actionProc }
+      var procs = root.watchedProcs()
       for (var key in procs) {
         var proc = procs[key]
-        if (!proc.running) { pending[key] = false; continue }
-        if (pending[key]) root.reap(proc)   // still up after a full tick
-        else { proc.running = false; pending[key] = true }
+        if (!proc.running) continue
+        var started = root.procStartedAt[key]
+        if (started === undefined) { root.noteStarted(key, true); continue }
+        var termed = root.procTermedAt[key]
+        if (termed === undefined) {
+          if (now - started > root.watchdogSeconds * 1000) {
+            proc.running = false                 // stage one: ask
+            var t = root.procTermedAt
+            t[key] = now
+            root.procTermedAt = t
+          }
+        } else if (now - termed > root.killGraceSeconds * 1000) {
+          root.hardKill(proc)                    // stage two: insist
+        }
       }
     }
   }
 
-  // Leaving a child behind when the panel is torn down (plugin disabled,
-  // shell reload) would outlive the thing that started it.
-  Component.onDestruction: {
-    root.reap(statusProc)
-    root.reap(presetProc)
-    root.reap(actionProc)
-  }
-
+  // A child left behind on plugin disable or shell reload outlives the thing
+  // that started it, so it is killed outright rather than asked.
+  Component.onDestruction: root.reapAll()
 
   function refresh() {
     if (!statusProc.running) statusProc.running = true
@@ -235,7 +271,7 @@ Panel {
 
   Process {
     id: statusProc
-    onRunningChanged: if (running) root.procStartedAt["statusProc"] = Date.now()
+    onRunningChanged: root.noteStarted("statusProc", running)
     command: [root.pluginDir + "bin/m4status"]
     stdout: StdioCollector {
       onStreamFinished: {
@@ -295,7 +331,7 @@ Panel {
 
   Process {
     id: presetProc
-    onRunningChanged: if (running) root.procStartedAt["presetProc"] = Date.now()
+    onRunningChanged: root.noteStarted("presetProc", running)
     command: [root.pluginDir + "bin/m4ctl", "presets", "--json"]
     running: true
     stdout: StdioCollector {
@@ -308,7 +344,7 @@ Panel {
 
   Process {
     id: actionProc
-    onRunningChanged: if (running) root.procStartedAt["actionProc"] = Date.now()
+    onRunningChanged: root.noteStarted("actionProc", running)
     onExited: { root.busy = false; root.refresh() }
   }
 
