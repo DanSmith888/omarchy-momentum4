@@ -40,9 +40,9 @@ for an index out of range.
 ### Battery and phone-call features (`0x04xx`-`0x08xx`)
 
 IDs from [momentumctl](https://github.com/gjabell/momentumctl) (MIT), verified
-here on firmware 3.38.3 two ways: `probes/decode/momentumctl-verify.json` has
+here on firmware 3.38.3 two ways: the `momentumctl-verify` capture has
 each get plus a set → readback → restore for every boolean, and each ID was
-then watched with `tools/gaia-watch` while the matching switch was flipped in
+then watched with `gaia-watch` while the matching switch was flipped in
 Smart Control's **Device Settings** pane, every one moved in step. Same
 framing as everything else: get takes no payload, set takes one byte, the
 reply is `command | 0x0100`.
@@ -204,13 +204,15 @@ needed a power cycle. Probably a reset or disconnect in GAIA's core space.
 |---|---|
 | `bin/m4ctl` | The CLI, and the protocol implementation everything else reuses |
 | `bin/m4status` | One JSON line for the bar widget |
-| `tools/gaia-probe` | Sweep a command range and report what answers |
-| `tools/gaia-diff` | Compare two probe captures |
-| `tools/gaia-watch` | Poll specific commands, reporting which byte changed |
-| `tools/gaia-listen` | Register for notifications and print what the device pushes |
-| `tools/eq-capture` | Record each EQ curve as presets are cycled in Smart Control |
+| `gaia-probe` | Sweep a command range and report what answers |
+| `gaia-diff` | Compare two probe captures |
+| `gaia-watch` | Poll specific commands, reporting which byte changed |
+| `gaia-listen` | Register for notifications and print what the device pushes |
+| `eq-capture` | Record each EQ curve as presets are cycled in Smart Control |
 
-Captures live in `probes/`, including both sides of the 2.13.42 → 3.38.3
+The research kit and device captures live on the `research` branch, out of the installed payload: https://github.com/DanSmith888/omarchy-momentum4/tree/research
+
+Captures include both sides of the 2.13.42 to 3.38.3
 firmware update.
 
 ## Method, and three traps

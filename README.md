@@ -143,9 +143,8 @@ Plugins run unsandboxed inside the Omarchy shell as your user.
   connected and talk to the headphones over an RFCOMM socket. Nothing else.
 - No root, no network, no background services, no writes outside
   `$XDG_RUNTIME_DIR` (a lock file).
-- `tools/` is the reverse-engineering kit behind [PROTOCOL.md](PROTOCOL.md).
-  The widget never runs it. `tools/gaia-probe` sends arbitrary commands to
-  the headphones; read its `--help` first.
+- The reverse-engineering kit and device captures are not shipped. They
+  live on the `research` branch, out of the installed payload.
 
 ## Related
 

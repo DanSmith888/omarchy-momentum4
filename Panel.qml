@@ -80,18 +80,51 @@ Panel {
 
   readonly property string pluginDir: Qt.resolvedUrl(".").toString().replace("file://", "")
 
-  // A stalled command must not wedge polling. Any Process still running when
-  // this fires is cancelled, so the next poll starts clean.
+  // Hard ceiling on anything a helper prints. m4status emits one JSON line
+  // and m4ctl a short array; anything past this is a runaway producer, so we
+  // drop the payload rather than parse it.
+  readonly property int maxOutputBytes: 65536
+
+  function boundedText(collector) {
+    var out = String(collector.text)
+    return out.length > root.maxOutputBytes ? "" : out.trim()
+  }
+
+  // A stalled command must not wedge polling. Setting running = false asks
+  // Quickshell to signal the child; a process still alive on the next tick
+  // has ignored that, so it is escalated to SIGKILL. Without the second
+  // stage a wedged helper would be "cancelled" every tick and never die.
   property int watchdogSeconds: 10
+
+  function reap(proc) {
+    if (!proc.running) return
+    if (proc.hasOwnProperty("signal")) proc.signal(9)   // SIGKILL
+    proc.running = false
+  }
+
   Timer {
+    id: watchdog
     interval: root.watchdogSeconds * 1000
     repeat: true
     running: true
+    property var pending: ({})
     onTriggered: {
-      if (statusProc.running) statusProc.running = false
-      if (presetProc.running) presetProc.running = false
-      if (actionProc.running) actionProc.running = false
+      var procs = { status: statusProc, preset: presetProc, action: actionProc }
+      for (var key in procs) {
+        var proc = procs[key]
+        if (!proc.running) { pending[key] = false; continue }
+        if (pending[key]) root.reap(proc)   // still up after a full tick
+        else { proc.running = false; pending[key] = true }
+      }
     }
+  }
+
+  // Leaving a child behind when the panel is torn down (plugin disabled,
+  // shell reload) would outlive the thing that started it.
+  Component.onDestruction: {
+    root.reap(statusProc)
+    root.reap(presetProc)
+    root.reap(actionProc)
   }
 
 
@@ -197,7 +230,7 @@ Panel {
     command: [root.pluginDir + "bin/m4status"]
     stdout: StdioCollector {
       onStreamFinished: {
-        var out = String(this.text).trim()
+        var out = root.boundedText(this)
         if (out === "") { root.percentage = -1; root.devicePresent = false; return }
         try {
           var d = JSON.parse(out)
@@ -246,7 +279,7 @@ Panel {
     running: true
     stdout: StdioCollector {
       onStreamFinished: {
-        try { root.presets = JSON.parse(String(this.text).trim()) || [] }
+        try { root.presets = JSON.parse(root.boundedText(this)) || [] }
         catch (e) { root.presets = [] }
       }
     }

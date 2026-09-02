@@ -23,7 +23,7 @@ Your Sennheiser Momentum 4, controlled from the bar instead of your phone. Batte
 
 Zero setup: pair the headphones, `omarchy plugin add`, done. No app to install, no daemon, no root, no BlueZ tweaks. Talks straight to the headphones in their own protocol using plain Python from the standard library, as your user, over a Bluetooth socket. `omarchy plugin remove` takes everything with it.
 
-Bonus for tinkerers: PROTOCOL.md documents the Momentum 4's command set, found by reverse-engineering, useful for anyone writing for these headphones on any platform. The `tools/` folder is that research kit; the widget never runs it.
+Bonus for tinkerers: PROTOCOL.md documents the Momentum 4's command set, found by reverse-engineering, useful for anyone writing for these headphones on any platform. The research kit and device captures are kept on a separate `research` branch, out of the installed payload.
 
 ### Submission checklist
 
