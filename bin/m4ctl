@@ -24,6 +24,8 @@ Usage:
 """
 
 import argparse
+import atexit
+import ctypes
 import fcntl
 import json
 import os
@@ -104,32 +106,97 @@ MAX_OUTPUT = 64 * 1024      # bytes captured per stream, then we stop and reap
 KILL_GRACE = 2.0            # seconds between SIGTERM and SIGKILL
 
 
+# Every child is made a session leader, so its pid is its process-group id
+# and killpg reaches anything it spawned in turn. PR_SET_PDEATHSIG means a
+# child is signalled if we die without getting the chance to reap it, which
+# is what keeps a nested m4ctl from outliving the m4status that started it.
+PR_SET_PDEATHSIG = 1
+_ACTIVE = set()          # Popen objects whose groups we still own
+
+
+def _child_setup(parent_pid):
+    """Run in the child between fork and exec."""
+    os.setsid()
+    try:
+        ctypes.CDLL("libc.so.6", use_errno=True).prctl(
+            PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
+    except Exception:
+        pass
+    # Parent-death race: if it died before prctl armed, nothing will signal
+    # us later, so leave now rather than linger as an orphan.
+    if os.getppid() != parent_pid:
+        os._exit(1)
+
+
+def _group_alive(pgid):
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except OSError:
+        return False
+
+
 def _reap(proc, grace=KILL_GRACE):
-    """End the child's whole process group: TERM, then KILL after `grace`."""
-    if proc.poll() is not None:
-        return
+    """Signal the child's whole group and only return once the group is gone.
+
+    The direct child exiting is not enough: descendants it started share the
+    group, so we keep signalling until killpg reports the group empty.
+    """
+    pgid = proc.pid                      # setsid in the child makes this the pgid
     for sig in (signal.SIGTERM, signal.SIGKILL):
+        if not _group_alive(pgid) and proc.poll() is not None:
+            break
         try:
-            os.killpg(proc.pid, sig)
+            os.killpg(pgid, sig)
         except OSError:
             try:
-                proc.kill()
+                proc.send_signal(sig)
             except OSError:
                 pass
         try:
             proc.wait(timeout=grace)
-            return
         except subprocess.TimeoutExpired:
             continue
+        if not _group_alive(pgid):
+            break
+    if proc.poll() is None:
+        try:
+            proc.wait(timeout=grace)
+        except subprocess.TimeoutExpired:
+            pass
+    _ACTIVE.discard(proc)
+
+
+def reap_all(*_):
+    for proc in list(_ACTIVE):
+        _reap(proc)
+
+
+def _on_signal(signum, _frame):
+    reap_all()
+    os._exit(128 + signum)
+
+
+def install_teardown():
+    """Own our children on every exit path: normal, exception, or signal."""
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        try:
+            signal.signal(sig, _on_signal)
+        except (ValueError, OSError):
+            pass
+    atexit.register(reap_all)
 
 
 def run_bounded(cmd, timeout=6, max_output=MAX_OUTPUT):
     """(returncode, stdout, stderr), bounded in time, bytes and lifetime."""
     try:
+        parent = os.getpid()
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, start_new_session=True)
+                                stderr=subprocess.PIPE,
+                                preexec_fn=lambda: _child_setup(parent))
     except OSError as exc:
         return 1, "", str(exc)
+    _ACTIVE.add(proc)
 
     bufs = {proc.stdout: bytearray(), proc.stderr: bytearray()}
     sel = selectors.DefaultSelector()
@@ -173,6 +240,7 @@ def run_bounded(cmd, timeout=6, max_output=MAX_OUTPUT):
             stream.close()
         except OSError:
             pass
+    _ACTIVE.discard(proc)
 
     def dec(b):
         return bytes(b).decode("utf-8", "replace")
@@ -725,6 +793,7 @@ def connected_mac():
 
 
 def main():
+    install_teardown()
     # Shared options live on a parent parser so they are accepted both before
     # and after the subcommand — `m4ctl get --json` is the natural way to type
     # it, and argparse rejects that unless the subparser also knows the flag.
@@ -779,10 +848,6 @@ def main():
     if args.cmd == "doctor":
         raise SystemExit(doctor())
 
-    mac = getattr(args, "mac", None) or connected_mac()
-    if not mac:
-        raise SystemExit("m4ctl: no connected Momentum 4 found (use --mac)")
-
     if args.cmd == "presets":
         ps = load_presets()
         if as_json:
@@ -793,6 +858,10 @@ def main():
                 print(f"  {e['name']:10} "
                       + " ".join(f"{g:+.1f}".rjust(6) for g in e["gains"]) + mark)
         return
+
+    mac = getattr(args, "mac", None) or connected_mac()
+    if not mac:
+        raise SystemExit("m4ctl: no connected Momentum 4 found (use --mac)")
 
     if args.cmd == "preset":
         ps = load_presets()

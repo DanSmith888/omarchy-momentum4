@@ -18,6 +18,8 @@ import re
 import subprocess
 import sys
 import select
+import atexit
+import ctypes
 import signal
 import time
 
@@ -65,23 +67,76 @@ def scrub(value):
     return value
 
 
+# Children are session leaders, so pid == pgid and killpg reaches whatever
+# they spawned in turn: m4ctl, and bluetoothctl beneath it. PR_SET_PDEATHSIG
+# covers the case where we are killed without a chance to reap.
+PR_SET_PDEATHSIG = 1
+_ACTIVE = set()
+
+
+def _child_setup(parent_pid):
+    os.setsid()
+    try:
+        ctypes.CDLL("libc.so.6", use_errno=True).prctl(
+            PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
+    except Exception:
+        pass
+    if os.getppid() != parent_pid:
+        os._exit(1)
+
+
+def _group_alive(pgid):
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except OSError:
+        return False
+
+
 def _reap(proc, grace=2.0):
-    """End the child's whole process group: TERM, then KILL after `grace`."""
-    if proc.poll() is not None:
-        return
+    """Signal the whole group until it is gone, not just the direct child."""
+    pgid = proc.pid
     for sig in (signal.SIGTERM, signal.SIGKILL):
+        if not _group_alive(pgid) and proc.poll() is not None:
+            break
         try:
-            os.killpg(proc.pid, sig)
+            os.killpg(pgid, sig)
         except OSError:
             try:
-                proc.kill()
+                proc.send_signal(sig)
             except OSError:
                 pass
         try:
             proc.wait(timeout=grace)
-            return
         except subprocess.TimeoutExpired:
             continue
+        if not _group_alive(pgid):
+            break
+    if proc.poll() is None:
+        try:
+            proc.wait(timeout=grace)
+        except subprocess.TimeoutExpired:
+            pass
+    _ACTIVE.discard(proc)
+
+
+def reap_all(*_):
+    for proc in list(_ACTIVE):
+        _reap(proc)
+
+
+def _on_signal(signum, _frame):
+    reap_all()
+    os._exit(128 + signum)
+
+
+def install_teardown():
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        try:
+            signal.signal(sig, _on_signal)
+        except (ValueError, OSError):
+            pass
+    atexit.register(reap_all)
 
 
 def run(cmd, timeout=TIMEOUT, limit=MAX_OUTPUT):
@@ -94,9 +149,11 @@ def run(cmd, timeout=TIMEOUT, limit=MAX_OUTPUT):
     proc = None
     try:
         # Own process group, so a helper that spawns children is reaped whole.
+        parent = os.getpid()
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL,
-                                start_new_session=True)
+                                preexec_fn=lambda: _child_setup(parent))
+        _ACTIVE.add(proc)
         fd = proc.stdout.fileno()
         deadline = time.monotonic() + timeout
         chunks, total, truncated = [], 0, False
@@ -206,6 +263,7 @@ def backend_for(name):
 
 
 def main():
+    install_teardown()
     mac, name = connected_device()
     if not mac:
         print("{}")

@@ -272,7 +272,13 @@ Panel {
     }
   }
 
-  // Preset definitions are static; load once rather than on every poll.
+  // Preset definitions are static local data, so one load is normally enough.
+  // It is retried when the headphones arrive because the shell usually starts
+  // before they connect, and an early failure would otherwise leave the panel
+  // with no presets for the rest of the session.
+  onDevicePresentChanged: if (root.devicePresent && root.presets.length === 0
+                              && !presetProc.running) presetProc.running = true
+
   Process {
     id: presetProc
     command: [root.pluginDir + "bin/m4ctl", "presets", "--json"]
