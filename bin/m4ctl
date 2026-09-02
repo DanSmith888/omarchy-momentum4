@@ -115,20 +115,61 @@ _ACTIVE = set()          # Popen objects whose groups we still own
 
 
 def _child_setup(parent_pid):
-    """Run in the child between fork and exec."""
-    os.setsid()
+    """Run in the child between fork and exec. Fails closed.
+
+    setsid makes the child a session leader, so its pid is its process-group
+    id and killpg reaches anything it spawns in turn. PR_SET_PDEATHSIG signals
+    it if we die without the chance to reap. If either cannot be established
+    the child exits rather than running unsupervised: a helper we cannot
+    guarantee to clean up is worse than no helper.
+    """
     try:
-        ctypes.CDLL("libc.so.6", use_errno=True).prctl(
-            PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
+        os.setsid()
+    except OSError:
+        os._exit(127)
+    try:
+        libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        if libc.prctl(PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0) != 0:
+            os._exit(127)
     except Exception:
-        pass
+        os._exit(127)
     # Parent-death race: if it died before prctl armed, nothing will signal
     # us later, so leave now rather than linger as an orphan.
     if os.getppid() != parent_pid:
         os._exit(1)
 
 
-def _group_alive(pgid):
+def _starttime(pid):
+    """Field 22 of /proc/<pid>/stat: the boot-clock tick the process began.
+
+    A pid alone is not an identity, it is reused. pid plus start time is
+    stable for the life of the process, so we can refuse to signal a group
+    whose leader is no longer the child we started.
+    """
+    try:
+        with open(f"/proc/{pid}/stat", "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return None
+    try:
+        # comm may contain spaces and brackets; everything after the last ')'
+        fields = data[data.rindex(b")") + 2:].split()
+        return int(fields[19])
+    except (ValueError, IndexError):
+        return None
+
+
+def _same_process(pid, starttime):
+    """True only when pid is still the process we recorded."""
+    if starttime is None:
+        return False
+    return _starttime(pid) == starttime
+
+
+def _group_alive(pgid, starttime):
+    """Group exists and its leader is still our child."""
+    if not _same_process(pgid, starttime):
+        return False
     try:
         os.killpg(pgid, 0)
         return True
@@ -137,27 +178,28 @@ def _group_alive(pgid):
 
 
 def _reap(proc, grace=KILL_GRACE):
-    """Signal the child's whole group and only return once the group is gone.
+    """Signal our child's group until it is gone, never a recycled pid.
 
-    The direct child exiting is not enough: descendants it started share the
-    group, so we keep signalling until killpg reports the group empty.
+    Every signal is gated on the group leader still being the process we
+    started, checked through its /proc start time. If the identity no longer
+    matches, the group is somebody else's and we leave it alone.
     """
-    pgid = proc.pid                      # setsid in the child makes this the pgid
+    pgid = proc.pid                 # setsid in the child makes pid == pgid
+    starttime = getattr(proc, "_m4_starttime", None)
+    if starttime is None:
+        starttime = _starttime(pgid)
     for sig in (signal.SIGTERM, signal.SIGKILL):
-        if not _group_alive(pgid) and proc.poll() is not None:
+        if not _group_alive(pgid, starttime):
             break
         try:
             os.killpg(pgid, sig)
         except OSError:
-            try:
-                proc.send_signal(sig)
-            except OSError:
-                pass
+            pass
         try:
             proc.wait(timeout=grace)
         except subprocess.TimeoutExpired:
             continue
-        if not _group_alive(pgid):
+        if not _group_alive(pgid, starttime):
             break
     if proc.poll() is None:
         try:
@@ -196,6 +238,7 @@ def run_bounded(cmd, timeout=6, max_output=MAX_OUTPUT):
                                 preexec_fn=lambda: _child_setup(parent))
     except OSError as exc:
         return 1, "", str(exc)
+    proc._m4_starttime = _starttime(proc.pid)
     _ACTIVE.add(proc)
 
     bufs = {proc.stdout: bytearray(), proc.stderr: bytearray()}

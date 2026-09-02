@@ -85,25 +85,47 @@ Panel {
   // drop the payload rather than parse it.
   readonly property int maxOutputBytes: 65536
 
-  function boundedText(collector) {
-    var out = String(collector.text)
-    return out.length > root.maxOutputBytes ? "" : out.trim()
+  // Line-at-a-time capture with a hard cap, rather than StdioCollector, which
+  // retains the whole stream before anything can look at its length. Both
+  // backends emit exactly one JSON line, so the first line is the payload and
+  // everything after it is noise from a producer that has gone wrong.
+  property var procLine: ({})       // key -> first line seen this run
+
+  function resetLine(key) {
+    var m = root.procLine
+    delete m[key]
+    root.procLine = m
+  }
+
+  function takeLine(key, line) {
+    var m = root.procLine
+    if (m[key] !== undefined) return          // already have the payload
+    var text = String(line)
+    m[key] = text.length > root.maxOutputBytes ? "" : text.trim()
+    root.procLine = m
+  }
+
+  function lineFor(key) {
+    var v = root.procLine[key]
+    return v === undefined ? "" : v
   }
 
   // One watchdog, one state machine, measured age per process.
   //
-  // Quickshell's Process exposes no signal(): `running = false` is the only
-  // stop it offers, and there is no way to escalate through it. So stage one
-  // asks politely, and stage two hard-kills by processId through
-  // Quickshell.execDetached, which also works while the component is being
-  // torn down. A fixed-interval cancel is not used: at a 10s tick with a 1s
-  // poll the two align, a healthy read is cancelled, and the pill vanishes.
+  // Escalation signals the tracked Process object, never a snapshotted pid.
+  // A pid is not a stable identity: the child can exit and the number be
+  // reused before an out-of-band `kill` runs, which would kill something
+  // else entirely. Process.signal(int) acts on the object Quickshell still
+  // owns, so it either reaches our child or does nothing.
+  //
+  // A fixed-interval cancel is not used: at a 10s tick with a 1s poll the
+  // two align, a healthy read is cancelled, and the pill vanishes.
   //
   // Teardown is transitive without killing the group: these children are
   // spawned by the shell, so their process group is the shell's and killing
-  // it would take the bar down. Instead each backend re-parents its own
-  // children with setsid and arms PR_SET_PDEATHSIG, so killing the direct
-  // child is enough, the rest follow.
+  // it would take the bar down. Each backend re-parents its own children
+  // with setsid and arms PR_SET_PDEATHSIG, so signalling the direct child is
+  // enough, the rest follow.
   readonly property int watchdogSeconds: 10    // age before we ask it to stop
   readonly property int killGraceSeconds: 3    // further grace before SIGKILL
 
@@ -116,6 +138,7 @@ Panel {
 
   function noteStarted(key, isRunning) {
     var started = root.procStartedAt, termed = root.procTermedAt
+    if (isRunning) root.resetLine(key)
     if (isRunning) {
       started[key] = Date.now()
       delete termed[key]
@@ -127,11 +150,10 @@ Panel {
     root.procTermedAt = termed
   }
 
-  // Hard stop. Reads processId first: clearing running detaches it.
+  // Hard stop on the object we own, so no pid can be reused underneath us.
   function hardKill(proc) {
-    var pid = proc.processId
+    if (proc.running) proc.signal(9)   // SIGKILL
     proc.running = false
-    if (pid > 0) Quickshell.execDetached(["kill", "-9", String(pid)])
   }
 
   function reapAll() {
@@ -273,9 +295,12 @@ Panel {
     id: statusProc
     onRunningChanged: root.noteStarted("statusProc", running)
     command: [root.pluginDir + "bin/m4status"]
-    stdout: StdioCollector {
-      onStreamFinished: {
-        var out = root.boundedText(this)
+    stdout: SplitParser {
+      splitMarker: "\n"
+      onRead: function (line) { root.takeLine("statusProc", line) }
+    }
+    onExited: {
+        var out = root.lineFor("statusProc")
         // Empty output means the read failed or was cancelled, not that the
         // headphones went away: keep the last reading and mark it stale
         // rather than pulling the pill out of the bar. A real "{}" from the
@@ -318,7 +343,6 @@ Panel {
           root.percentage = -1
           root.devicePresent = false
         }
-      }
     }
   }
 
@@ -334,11 +358,13 @@ Panel {
     onRunningChanged: root.noteStarted("presetProc", running)
     command: [root.pluginDir + "bin/m4ctl", "presets", "--json"]
     running: true
-    stdout: StdioCollector {
-      onStreamFinished: {
-        try { root.presets = JSON.parse(root.boundedText(this)) || [] }
-        catch (e) { root.presets = [] }
-      }
+    stdout: SplitParser {
+      splitMarker: "\n"
+      onRead: function (line) { root.takeLine("presetProc", line) }
+    }
+    onExited: {
+      try { root.presets = JSON.parse(root.lineFor("presetProc")) || [] }
+      catch (e) { root.presets = [] }
     }
   }
 
