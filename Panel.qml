@@ -444,14 +444,14 @@ Panel {
           // are away, so it would only ever say one thing. BUSY is worth a
           // badge because the panel otherwise looks connected but inert.
           detail: root.stale ? "BUSY" : ""
-          foreground: root.barForeground
+          foreground: Color.popups.text
           fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
           iconOpacity: root.stale ? 0.5 : 1
           iconComponent: Component {
             Text {
               textFormat: Text.PlainText
               text: "󰋋"
-              color: root.barForeground
+              color: Color.popups.text
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.display
             }
@@ -463,12 +463,12 @@ Panel {
         PanelSeparator {
           anchors.left: parent.left
           anchors.right: parent.right
-          foreground: root.barForeground
+          foreground: Color.popups.text
         }
 
         PanelSectionHeader {
           text: "NOISE CONTROL"
-          foreground: root.barForeground
+          foreground: Color.popups.text
           visible: root.ancSupported
         }
 
@@ -482,21 +482,21 @@ Panel {
             text: "Adaptive"
             bordered: true
             selected: root.mode === "adaptive"
-            foreground: root.barForeground
+            foreground: Color.popups.text
             onClicked: root.setMode("adaptive")
           }
           Button {
             text: "Custom"
             bordered: true
             selected: root.mode === "custom"
-            foreground: root.barForeground
+            foreground: Color.popups.text
             onClicked: root.setMode("custom")
           }
           Button {
             text: "Off"
             bordered: true
             selected: root.mode === "off"
-            foreground: root.barForeground
+            foreground: Color.popups.text
             onClicked: root.setMode("off")
           }
         }
@@ -515,7 +515,7 @@ Panel {
             textFormat: Text.PlainText
             id: ancLabel
             anchors.left: parent.left
-            color: Qt.darker(root.barForeground, 1.4)
+            color: Qt.darker(Color.popups.text, 1.4)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             text: root.mode === "adaptive" ? "ANC"
@@ -525,7 +525,7 @@ Panel {
           Text {
             textFormat: Text.PlainText
             anchors.right: parent.right
-            color: Qt.darker(root.barForeground, 1.4)
+            color: Qt.darker(Color.popups.text, 1.4)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             text: root.mode === "adaptive" ? "Transparency"
@@ -564,7 +564,7 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Anti-wind"
-            color: root.barForeground
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -579,7 +579,7 @@ Panel {
               text: "Off"
               bordered: true
               selected: root.antiwind === "off"
-              foreground: root.barForeground
+              foreground: Color.popups.text
               enabled: root.customMode
               onClicked: root.setAntiwind("off")
             }
@@ -587,7 +587,7 @@ Panel {
               text: "Auto"
               bordered: true
               selected: root.antiwind === "auto"
-              foreground: root.barForeground
+              foreground: Color.popups.text
               enabled: root.customMode
               onClicked: root.setAntiwind("auto")
             }
@@ -595,7 +595,7 @@ Panel {
               text: "Max"
               bordered: true
               selected: root.antiwind === "max"
-              foreground: root.barForeground
+              foreground: Color.popups.text
               enabled: root.customMode
               onClicked: root.setAntiwind("max")
             }
@@ -605,13 +605,13 @@ Panel {
         PanelSeparator {
           anchors.left: parent.left
           anchors.right: parent.right
-          foreground: root.barForeground
+          foreground: Color.popups.text
           visible: root.bassBoost !== null
         }
 
         PanelSectionHeader {
           text: "SOUND"
-          foreground: root.barForeground
+          foreground: Color.popups.text
           visible: root.bassBoost !== null || root.eq !== null
         }
 
@@ -623,7 +623,7 @@ Panel {
             text: "Graphic EQ"
             bordered: true
             selected: root.soundMode === "eq"
-            foreground: root.barForeground
+            foreground: Color.popups.text
             tooltipText: "Five-band equaliser with presets"
             onClicked: root.setSoundMode("eq")
           }
@@ -631,7 +631,7 @@ Panel {
             text: "Speech Clarity"
             bordered: true
             selected: root.soundMode === "speech"
-            foreground: root.barForeground
+            foreground: Color.popups.text
             tooltipText: "Tunes for voice. Replaces the equaliser and bass boost, which are disabled while it is on."
             onClicked: root.setSoundMode("speech")
           }
@@ -641,13 +641,13 @@ Panel {
         PanelSeparator {
           anchors.left: parent.left
           anchors.right: parent.right
-          foreground: root.barForeground
+          foreground: Color.popups.text
           visible: root.soundMode !== ""
         }
 
         PanelSectionHeader {
           text: "EQUALISER"
-          foreground: root.barForeground
+          foreground: Color.popups.text
           visible: root.eq !== null
           opacity: root.eqMode ? 1.0 : 0.4
         }
@@ -669,7 +669,7 @@ Panel {
               text: modelData.name
               bordered: true
               selected: root.activePreset() === modelData.name
-              foreground: root.barForeground
+              foreground: Color.popups.text
               onClicked: root.applyPreset(modelData.name)
             }
           }
@@ -678,7 +678,7 @@ Panel {
             text: "Custom"
             bordered: true
             selected: root.activePreset() === ""
-            foreground: root.barForeground
+            foreground: Color.popups.text
             // Reflects state rather than setting it: clicking does nothing,
             // because "custom" is simply "matches no preset".
             onClicked: {}
@@ -734,7 +734,7 @@ Panel {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 text: (bandCol.v > 0 ? "+" : "") + bandCol.v.toFixed(1)
-                color: root.barForeground
+                color: Color.popups.text
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
               }
@@ -746,7 +746,7 @@ Panel {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 text: ["63Hz", "250Hz", "1kHz", "4kHz", "8kHz"][index]
-                color: Qt.darker(root.barForeground, 1.5)
+                color: Qt.darker(Color.popups.text, 1.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
               }
@@ -769,7 +769,7 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Bass boost"
-            color: root.barForeground
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -782,14 +782,14 @@ Panel {
               text: "Off"
               bordered: true
               selected: root.bassBoost === false
-              foreground: root.barForeground
+              foreground: Color.popups.text
               onClicked: root.setBass(false)
             }
             Button {
               text: "On"
               bordered: true
               selected: root.bassBoost === true
-              foreground: root.barForeground
+              foreground: Color.popups.text
               onClicked: root.setBass(true)
             }
           }
@@ -798,7 +798,7 @@ Panel {
         PanelSeparator {
           anchors.left: parent.left
           anchors.right: parent.right
-          foreground: root.barForeground
+          foreground: Color.popups.text
           visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null || root.controls !== null
         }
 
@@ -806,7 +806,7 @@ Panel {
         // the app's own, as tooltips.
         PanelSectionHeader {
           text: "DEVICE SETTINGS"
-          foreground: root.barForeground
+          foreground: Color.popups.text
           visible: root.onHead !== null || root.smartPause !== null || root.autoAnswer !== null || root.comfortCall !== null || root.controls !== null
         }
         Item {
@@ -820,7 +820,7 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "On-head Detection"
-            color: root.barForeground
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -833,7 +833,7 @@ Panel {
               text: "Off"
               bordered: true
               selected: root.onHead === false
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Enable smart pause, hold calls automatically, power saving mode"
               onClicked: root.setFeature("on-head", root.onHead, false)
             }
@@ -841,7 +841,7 @@ Panel {
               text: "On"
               bordered: true
               selected: root.onHead === true
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Enable smart pause, hold calls automatically, power saving mode"
               onClicked: root.setFeature("on-head", root.onHead, true)
             }
@@ -862,7 +862,7 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Smart Pause"
-            color: root.barForeground
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -875,7 +875,7 @@ Panel {
               text: "Off"
               bordered: true
               selected: root.smartPause === false
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Pause music by taking headphones off. Continue when putting back on."
               onClicked: root.setFeature("smart-pause", root.smartPause, false)
             }
@@ -883,7 +883,7 @@ Panel {
               text: "On"
               bordered: true
               selected: root.smartPause === true
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Pause music by taking headphones off. Continue when putting back on."
               onClicked: root.setFeature("smart-pause", root.smartPause, true)
             }
@@ -904,7 +904,7 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Auto-Answer Calls"
-            color: root.barForeground
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -917,7 +917,7 @@ Panel {
               text: "Off"
               bordered: true
               selected: root.autoAnswer === false
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Answers calls when you put headphones on."
               onClicked: root.setFeature("auto-answer", root.autoAnswer, false)
             }
@@ -925,7 +925,7 @@ Panel {
               text: "On"
               bordered: true
               selected: root.autoAnswer === true
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Answers calls when you put headphones on."
               onClicked: root.setFeature("auto-answer", root.autoAnswer, true)
             }
@@ -947,7 +947,7 @@ Panel {
 
             textFormat: Text.PlainText
             text: "Auto Power Off (minutes)"
-            color: root.barForeground
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -972,7 +972,7 @@ Panel {
                 text: modelData.label
                 bordered: true
                 selected: root.autoOff === modelData.secs
-                foreground: root.barForeground
+                foreground: Color.popups.text
                 tooltipText: "Sets the time after which your device turns itself off to save power"
                 onClicked: root.setAutoOff(modelData.choice)
               }
@@ -991,7 +991,7 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Comfort Calls"
-            color: root.barForeground
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -1004,7 +1004,7 @@ Panel {
               text: "Off"
               bordered: true
               selected: root.comfortCall === false
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Gives phone calls a more natural sound stage"
               onClicked: root.setFeature("comfort-call", root.comfortCall, false)
             }
@@ -1012,7 +1012,7 @@ Panel {
               text: "On"
               bordered: true
               selected: root.comfortCall === true
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Gives phone calls a more natural sound stage"
               onClicked: root.setFeature("comfort-call", root.comfortCall, true)
             }
@@ -1033,7 +1033,7 @@ Panel {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "Touch controls"
-            color: root.barForeground
+            color: Color.popups.text
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -1046,7 +1046,7 @@ Panel {
               text: "Off"
               bordered: true
               selected: root.controls === false
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Enable or disable the touch controls on the ear cup"
               onClicked: root.setControls(false)
             }
@@ -1054,7 +1054,7 @@ Panel {
               text: "On"
               bordered: true
               selected: root.controls === true
-              foreground: root.barForeground
+              foreground: Color.popups.text
               tooltipText: "Enable or disable the touch controls on the ear cup"
               onClicked: root.setControls(true)
             }
@@ -1066,7 +1066,7 @@ Panel {
           textFormat: Text.PlainText
           text: "Noise control unavailable for this device"
           visible: !root.ancSupported
-          color: Qt.darker(root.barForeground, 1.4)
+          color: Qt.darker(Color.popups.text, 1.4)
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           wrapMode: Text.WordWrap
