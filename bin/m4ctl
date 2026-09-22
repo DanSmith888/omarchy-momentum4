@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """m4ctl — command-line control for Sennheiser Momentum 4 headphones.
 
 Speaks Qualcomm's GAIA protocol over Bluetooth RFCOMM. Standard library only:
