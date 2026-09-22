@@ -308,6 +308,19 @@ def doctor():
     def add(ok, label, detail="", fix=""):
         checks.append((ok, label, detail, fix))
 
+    # 0. interpreter
+    #
+    # AF_BLUETOOTH is a build-time feature of CPython's socket module. The
+    # prebuilt interpreters a version manager installs (mise, pyenv, uv, asdf)
+    # are compiled without bluez headers, so it is simply absent and every
+    # channel probe below fails with an error that reads like a dead device.
+    # The shebang pins /usr/bin/python3, but an explicit `python3 bin/m4ctl`
+    # bypasses that, so say plainly what is wrong.
+    bluetooth_ok = hasattr(socket, "AF_BLUETOOTH")
+    add(bluetooth_ok, "Python speaks Bluetooth",
+        "" if bluetooth_ok else f"{sys.executable} was built without bluez",
+        "run it as /usr/bin/python3, not a version manager's python3")
+
     # 1. adapter
     rc, out, _ = _run(["rfkill", "list", "bluetooth"])
     blocked = "Soft blocked: yes" in out
@@ -330,21 +343,27 @@ def doctor():
     if mac:
         usb = _run(["sh", "-c", "grep -qi momentum /proc/asound/cards"])[0] == 0
 
-        # 4. GAIA
-        try:
-            with Momentum4(mac) as dev:
-                fw = dev.firmware()
-                pct = dev.battery()
-            add(bool(fw), "GAIA control channel", f"firmware {fw}" if fw else "",
-                "power-cycle the headphones")
-            add(pct is not None, "Battery readable",
-                f"{pct}%" if pct is not None
-                else ("headphones are on USB — they stop reporting battery "
-                      "while plugged in" if usb else "no answer to 0x0603"),
-                "" if usb else "unplug USB, or power-cycle the headphones")
-        except SystemExit as exc:
-            add(False, "GAIA control channel", str(exc),
-                "power-cycle the headphones, then reconnect")
+        # 4. GAIA. Pointless to probe without AF_BLUETOOTH, and the pile of
+        # identical socket errors buries the real cause.
+        if not bluetooth_ok:
+            add(False, "GAIA control channel",
+                "not attempted: this python3 cannot open a Bluetooth socket",
+                "run it as /usr/bin/python3")
+        else:
+            try:
+                with Momentum4(mac) as dev:
+                    fw = dev.firmware()
+                    pct = dev.battery()
+                add(bool(fw), "GAIA control channel", f"firmware {fw}" if fw else "",
+                    "power-cycle the headphones")
+                add(pct is not None, "Battery readable",
+                    f"{pct}%" if pct is not None
+                    else ("headphones are on USB — they stop reporting battery "
+                          "while plugged in" if usb else "no answer to 0x0603"),
+                    "" if usb else "unplug USB, or power-cycle the headphones")
+            except SystemExit as exc:
+                add(False, "GAIA control channel", str(exc),
+                    "power-cycle the headphones, then reconnect")
 
     # 5. plugin
     plug = os.path.expanduser("~/.config/omarchy/plugins/" + PLUGIN_ID)
